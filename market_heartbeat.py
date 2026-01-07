@@ -165,9 +165,8 @@ class MarketHeartbeat:
         state.current_inventory = max(0, state.current_inventory - depletion)
         
         # Update world state
-        city = self.world.cities.get(city_name)
-        if city:
-            city.current_inventory = state.current_inventory
+        if city_name in self.world.graph.nodes:
+            self.world.graph.nodes[city_name]['current_inventory'] = state.current_inventory
     
     def replenish_inventory(self, city_name: str, amount: int):
         """
@@ -188,9 +187,8 @@ class MarketHeartbeat:
         )
         
         # Update world state
-        city = self.world.cities.get(city_name)
-        if city:
-            city.current_inventory = state.current_inventory
+        if city_name in self.world.graph.nodes:
+            self.world.graph.nodes[city_name]['current_inventory'] = state.current_inventory
         
         logger.info(
             f"📦 Replenished {city_name}: +{amount} units "
