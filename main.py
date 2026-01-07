@@ -18,10 +18,11 @@ from rich import box
 
 from schema import (
     Order, OrderPriority, NegotiationState, NegotiationStatus,
-    GraphState, AgentType, WarehouseState, CarrierState
+    GraphState, AgentType, WarehouseState, CarrierState, MarketplaceAuction
 )
 from world import WorldState, calculate_fair_price_range
 from agents import WarehouseAgent, CarrierAgent, create_negotiation_graph
+from marketplace import MarketplaceOrchestrator, create_default_carrier_fleet
 
 
 # =============================================================================
@@ -291,11 +292,117 @@ def run_negotiation(
     return negotiation
 
 
+def print_auction_result(auction: MarketplaceAuction):
+    """Display the auction result in formatted output."""
+    console.print("\n")
+    
+    if auction.is_complete and auction.winner_id:
+        style = "bold green"
+        title = "🏆 AUCTION COMPLETE"
+    else:
+        style = "bold red"
+        title = "❌ AUCTION FAILED"
+    
+    console.print(Panel(title, style=style))
+    
+    result_table = Table(box=box.ROUNDED)
+    result_table.add_column("Metric", style="cyan")
+    result_table.add_column("Value", style="white")
+    
+    result_table.add_row("Auction ID", auction.auction_id)
+    result_table.add_row("Order ID", auction.order.order_id)
+    result_table.add_row("Participating Carriers", str(len(auction.participating_carriers)))
+    result_table.add_row("Bids Received", str(len(auction.bids)))
+    
+    if auction.winner_id:
+        result_table.add_row("Winner", auction.winner_id)
+        result_table.add_row("Winning Price", f"${auction.winning_bid.offer_price:.2f}")
+        result_table.add_row("Estimated Delivery", f"{auction.winning_bid.eta_estimate:.1f} hours")
+    
+    console.print(result_table)
+    
+    # Print bid comparison
+    if auction.bids:
+        console.print("\n")
+        console.print(Panel("📊 BID COMPARISON", style="bold blue"))
+        
+        bids_table = Table(box=box.ROUNDED)
+        bids_table.add_column("Rank", style="dim")
+        bids_table.add_column("Carrier", style="cyan")
+        bids_table.add_column("Price", justify="right", style="yellow")
+        bids_table.add_column("ETA", justify="right")
+        bids_table.add_column("Score", justify="right", style="green")
+        
+        # Sort by score
+        sorted_bids = sorted(
+            [(bid, auction.bid_scores.get(bid.sender_id, 0)) for bid in auction.bids],
+            key=lambda x: x[1],
+            reverse=True
+        )
+        
+        for i, (bid, score) in enumerate(sorted_bids, 1):
+            rank_icon = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"{i}."
+            bids_table.add_row(
+                rank_icon,
+                bid.sender_id,
+                f"${bid.offer_price:.2f}",
+                f"{bid.eta_estimate:.1f}h",
+                f"{score:.3f}"
+            )
+        
+        console.print(bids_table)
+
+
+def run_marketplace_auction(
+    order: Order,
+    world: WorldState,
+    warehouse: WarehouseAgent,
+    carriers: list[CarrierAgent],
+    price_weight: float = 0.5,
+    time_weight: float = 0.3,
+    reputation_weight: float = 0.2
+) -> MarketplaceAuction:
+    """
+    Run a competitive marketplace auction.
+    
+    Args:
+        order: The shipping order
+        world: World state
+        warehouse: Warehouse agent
+        carriers: List of carrier agents
+        price_weight: Weight for price evaluation
+        time_weight: Weight for time evaluation
+        reputation_weight: Weight for reputation evaluation
+        
+    Returns:
+        Completed MarketplaceAuction
+    """
+    orchestrator = MarketplaceOrchestrator(world)
+    
+    auction = orchestrator.run_auction(
+        warehouse=warehouse,
+        carriers=carriers,
+        order=order,
+        price_weight=price_weight,
+        time_weight=time_weight,
+        reputation_weight=reputation_weight
+    )
+    
+    return auction
+
+
 def main():
     """Main entry point for the MA-GET simulation."""
+    import sys
+    
     # Setup
     setup_logging(logging.WARNING)  # Reduce noise, we have rich output
     print_banner()
+    
+    # Check for mode selection
+    mode = "auction"  # Default to auction mode
+    if len(sys.argv) > 1:
+        mode = sys.argv[1].lower()
     
     # Initialize the world
     console.print("\n🌍 Initializing Texas Logistics Corridor...", style="bold")
@@ -313,13 +420,32 @@ def main():
     )
     console.print(f"  🏭 Warehouse Agent: {warehouse.agent_id} @ {warehouse.state.location}")
     
-    carrier = CarrierAgent(
-        agent_id="CR-TX-001",
-        location="Houston",
-        fleet_size=5,
-        profit_target=2.5
-    )
-    console.print(f"  🚚 Carrier Agent: {carrier.agent_id} @ {carrier.state.current_location}")
+    if mode == "auction":
+        # Create multiple carriers with different personas
+        console.print("\n  Creating Competitive Carrier Fleet...")
+        carriers = create_default_carrier_fleet(world)
+        
+        for carrier in carriers:
+            persona_emoji = {
+                "PREMIUM": "⚡",
+                "GREEN": "🌱",
+                "DISCOUNT": "💰"
+            }.get(carrier.state.persona.value if carrier.state.persona else "NONE", "🚚")
+            
+            console.print(
+                f"  {persona_emoji} {carrier.state.company_name}: "
+                f"{carrier.agent_id} @ {carrier.state.current_location} "
+                f"(Target: ${carrier.state.profit_target_per_mile:.2f}/mi)"
+            )
+    else:
+        # Single carrier for 1-vs-1 negotiation
+        carrier = CarrierAgent(
+            agent_id="CR-TX-001",
+            location="Houston",
+            fleet_size=5,
+            profit_target=2.5
+        )
+        console.print(f"  🚚 Carrier Agent: {carrier.agent_id} @ {carrier.state.current_location}")
     
     # Create an order
     order = Order(
@@ -334,41 +460,87 @@ def main():
     )
     print_order(order, world)
     
-    # Run the negotiation
-    negotiation_result = run_negotiation(
-        order=order,
-        world=world,
-        warehouse=warehouse,
-        carrier=carrier,
-        max_rounds=5
-    )
-    
-    # Display results
-    print_negotiation_result(negotiation_result)
-    
-    # Final summary
-    console.print("\n")
-    if negotiation_result.final_status == NegotiationStatus.ACCEPTED:
-        savings = order.max_budget - (negotiation_result.agreed_price or 0)
-        console.print(
-            Panel(
-                f"📊 Warehouse saved ${savings:.2f} from max budget\n"
-                f"📊 Carrier will deliver in {negotiation_result.agreed_eta:.1f} hours",
-                title="💰 DEAL SUMMARY",
-                style="bold green"
-            )
+    # Run based on mode
+    if mode == "auction":
+        console.print("\n🎪 Running Marketplace Auction Mode", style="bold magenta")
+        console.print(f"   Evaluation Weights: Price 50%, Time 30%, Reputation 20%\n")
+        
+        auction_result = run_marketplace_auction(
+            order=order,
+            world=world,
+            warehouse=warehouse,
+            carriers=carriers,
+            price_weight=0.5,
+            time_weight=0.3,
+            reputation_weight=0.2
         )
+        
+        # Display results
+        print_auction_result(auction_result)
+        
+        # Final summary
+        console.print("\n")
+        if auction_result.is_complete and auction_result.winner_id:
+            savings = order.max_budget - (auction_result.winning_bid.offer_price or 0)
+            console.print(
+                Panel(
+                    f"🏆 Winner: {auction_result.winner_id}\n"
+                    f"💰 Winning Bid: ${auction_result.winning_bid.offer_price:.2f}\n"
+                    f"📊 Warehouse saved ${savings:.2f} from max budget\n"
+                    f"📊 Expected delivery in {auction_result.winning_bid.eta_estimate:.1f} hours\n\n"
+                    f"📝 Reasoning:\n   {auction_result.selection_reasoning}",
+                    title="🎉 AUCTION SUMMARY",
+                    style="bold green"
+                )
+            )
+        else:
+            console.print(
+                Panel(
+                    "The auction did not result in a winner.\n"
+                    "Consider adjusting order parameters or carrier availability.",
+                    title="📋 NEXT STEPS",
+                    style="bold yellow"
+                )
+            )
     else:
-        console.print(
-            Panel(
-                "The negotiation did not result in a deal.\n"
-                "Consider adjusting budgets or constraints.",
-                title="📋 NEXT STEPS",
-                style="bold yellow"
-            )
+        console.print("\n🤝 Running 1-vs-1 Negotiation Mode", style="bold cyan")
+        
+        # Run the negotiation
+        negotiation_result = run_negotiation(
+            order=order,
+            world=world,
+            warehouse=warehouse,
+            carrier=carrier,
+            max_rounds=5
         )
+        
+        # Display results
+        print_negotiation_result(negotiation_result)
+        
+        # Final summary
+        console.print("\n")
+        if negotiation_result.final_status == NegotiationStatus.ACCEPTED:
+            savings = order.max_budget - (negotiation_result.agreed_price or 0)
+            console.print(
+                Panel(
+                    f"📊 Warehouse saved ${savings:.2f} from max budget\n"
+                    f"📊 Carrier will deliver in {negotiation_result.agreed_eta:.1f} hours",
+                    title="💰 DEAL SUMMARY",
+                    style="bold green"
+                )
+            )
+        else:
+            console.print(
+                Panel(
+                    "The negotiation did not result in a deal.\n"
+                    "Consider adjusting budgets or constraints.",
+                    title="📋 NEXT STEPS",
+                    style="bold yellow"
+                )
+            )
     
-    console.print("\n✨ MA-GET Phase 1 Complete!\n", style="bold cyan")
+    console.print("\n✨ MA-GET Simulation Complete!\n", style="bold cyan")
+    console.print("💡 TIP: Run 'python dashboard.py' to view the dashboard", style="dim")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ Warehouse and Carrier agents with LangGraph integration.
 import uuid
 import logging
 import os
-from typing import Dict, Any, Optional, Literal
+from typing import Dict, Any, Optional, Literal, List
 from datetime import datetime
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -19,9 +19,11 @@ from dotenv import load_dotenv
 from schema import (
     AgentType, NegotiationStatus, NegotiationOffer, NegotiationResponse,
     NegotiationState, WarehouseState, CarrierState, AgentMonologue,
-    GraphState, Order, OrderPriority
+    GraphState, Order, OrderPriority, ReputationScore, DealHistory, DealOutcome,
+    CarrierPersona
 )
 from world import WorldState, calculate_fair_price_range, calculate_shipping_cost
+import deal_database as db
 
 # Load environment variables
 load_dotenv()
@@ -239,6 +241,47 @@ class BaseAgent:
             "eta_estimate": 24.0,
             "confidence": 0.5
         }
+    
+    def get_deal_history(self, limit: int = 50) -> List[DealHistory]:
+        """Get this agent's deal history from the database."""
+        return db.get_agent_deal_history(self.agent_id, limit=limit)
+    
+    def get_reputation(self) -> ReputationScore:
+        """Get this agent's current reputation score."""
+        rep = db.load_reputation_score(self.agent_id)
+        if rep is None:
+            # Create default reputation if not found
+            rep = ReputationScore(
+                agent_id=self.agent_id,
+                agent_type=self.agent_type
+            )
+            db.save_reputation_score(rep)
+        return rep
+    
+    def update_reputation(self, reputation: ReputationScore):
+        """Update this agent's reputation in the database."""
+        db.save_reputation_score(reputation)
+    
+    def record_deal(self, deal: DealHistory):
+        """Record a completed deal and update reputation."""
+        # Save the deal to database
+        db.save_deal_history(deal)
+        
+        # Update reputation scores for all involved agents
+        db.update_reputation_from_deal(deal)
+        
+        # Refresh local reputation
+        updated_rep = db.load_reputation_score(self.agent_id)
+        if updated_rep and hasattr(self, 'state'):
+            self.state.reputation = updated_rep
+    
+    def get_partner_reputation(self, partner_id: str) -> Optional[ReputationScore]:
+        """Get the reputation of a potential negotiation partner."""
+        return db.load_reputation_score(partner_id)
+    
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get statistics about this agent's deal history."""
+        return db.get_deal_statistics(agent_id=self.agent_id)
 
 
 class WarehouseAgent(BaseAgent):
@@ -270,11 +313,22 @@ class WarehouseAgent(BaseAgent):
                 print(f"⚠️  LLM initialization failed: {e} - using rule-based logic")
         
         super().__init__(agent_id, AgentType.WAREHOUSE, llm)
+        
+        # Load reputation from database or create new
+        reputation = db.load_reputation_score(agent_id)
+        if reputation is None:
+            reputation = ReputationScore(
+                agent_id=agent_id,
+                agent_type=AgentType.WAREHOUSE
+            )
+            db.save_reputation_score(reputation)
+        
         self.state = WarehouseState(
             agent_id=agent_id,
             location=location,
             budget_remaining=budget,
-            urgency_threshold=urgency_threshold
+            urgency_threshold=urgency_threshold,
+            reputation=reputation
         )
         self.use_llm = use_llm and llm is not None
     
@@ -502,6 +556,270 @@ class WarehouseAgent(BaseAgent):
             reasoning=reasoning,
             counter_eta=incoming_offer.eta_estimate
         )
+    
+    def evaluate_carrier_reputation(self, carrier_id: str) -> Dict[str, Any]:
+        """
+        Evaluate a carrier's reputation and past performance.
+        
+        Args:
+            carrier_id: The carrier's ID
+            
+        Returns:
+            Dictionary with reputation analysis
+        """
+        carrier_rep = self.get_partner_reputation(carrier_id)
+        
+        if carrier_rep is None:
+            return {
+                "carrier_id": carrier_id,
+                "reputation_found": False,
+                "recommendation": "NEUTRAL",
+                "reasoning": "No past history with this carrier. Proceed with standard caution."
+            }
+        
+        # Analyze reputation
+        score = carrier_rep.overall_score
+        reliability = carrier_rep.reliability_score
+        total_deals = carrier_rep.total_deals
+        
+        # Determine recommendation
+        if score >= 0.8 and reliability >= 0.85:
+            recommendation = "HIGHLY_RECOMMENDED"
+            reasoning = (
+                f"Excellent reputation (score: {score:.2f}, reliability: {reliability:.2f}). "
+                f"Based on {total_deals} deals. Can trust for important shipments."
+            )
+        elif score >= 0.6 and reliability >= 0.7:
+            recommendation = "RECOMMENDED"
+            reasoning = (
+                f"Good reputation (score: {score:.2f}, reliability: {reliability:.2f}). "
+                f"Based on {total_deals} deals. Suitable for most shipments."
+            )
+        elif score >= 0.4:
+            recommendation = "CAUTION"
+            reasoning = (
+                f"Mixed reputation (score: {score:.2f}, reliability: {reliability:.2f}). "
+                f"Based on {total_deals} deals. Negotiate carefully and monitor closely."
+            )
+        else:
+            recommendation = "AVOID"
+            reasoning = (
+                f"Poor reputation (score: {score:.2f}, reliability: {reliability:.2f}). "
+                f"Based on {total_deals} deals. Consider alternative carriers."
+            )
+        
+        return {
+            "carrier_id": carrier_id,
+            "reputation_found": True,
+            "overall_score": score,
+            "reliability_score": reliability,
+            "total_deals": total_deals,
+            "on_time_percentage": carrier_rep.on_time_percentage,
+            "recommendation": recommendation,
+            "reasoning": reasoning
+        }
+    
+    def evaluate_bids(
+        self,
+        bids: List[NegotiationOffer],
+        order: Order,
+        world: WorldState,
+        price_weight: float = 0.5,
+        time_weight: float = 0.3,
+        reputation_weight: float = 0.2
+    ) -> Dict[str, Any]:
+        """
+        Evaluate multiple bids from different carriers and select the best one.
+        
+        Args:
+            bids: List of bids from carriers
+            order: The order being bid on
+            world: Current world state
+            price_weight: Weight for price in scoring (0-1)
+            time_weight: Weight for ETA in scoring (0-1)
+            reputation_weight: Weight for reputation in scoring (0-1)
+            
+        Returns:
+            Dictionary with winner_id, winning_bid, scores, and reasoning
+        """
+        if not bids:
+            return {
+                "winner_id": None,
+                "winning_bid": None,
+                "scores": {},
+                "reasoning": "No bids received"
+            }
+        
+        # Normalize weights
+        total_weight = price_weight + time_weight + reputation_weight
+        price_weight /= total_weight
+        time_weight /= total_weight
+        reputation_weight /= total_weight
+        
+        # Calculate scores for each bid
+        bid_scores = {}
+        bid_details = {}
+        
+        # Find min/max for normalization
+        prices = [bid.offer_price for bid in bids]
+        etas = [bid.eta_estimate for bid in bids]
+        min_price, max_price = min(prices), max(prices)
+        min_eta, max_eta = min(etas), max(etas)
+        
+        for bid in bids:
+            carrier_id = bid.sender_id
+            
+            # Price score (lower is better, so invert)
+            if max_price > min_price:
+                price_score = 1.0 - (bid.offer_price - min_price) / (max_price - min_price)
+            else:
+                price_score = 1.0
+            
+            # Time score (lower is better, so invert)
+            if max_eta > min_eta:
+                time_score = 1.0 - (bid.eta_estimate - min_eta) / (max_eta - min_eta)
+            else:
+                time_score = 1.0
+            
+            # Reputation score
+            carrier_rep = self.get_partner_reputation(carrier_id)
+            if carrier_rep:
+                reputation_score = (carrier_rep.overall_score + carrier_rep.reliability_score) / 2.0
+            else:
+                reputation_score = 0.5  # Neutral for unknown carriers
+            
+            # Combined weighted score
+            total_score = (
+                price_weight * price_score +
+                time_weight * time_score +
+                reputation_weight * reputation_score
+            )
+            
+            bid_scores[carrier_id] = total_score
+            bid_details[carrier_id] = {
+                "bid": bid,
+                "price_score": price_score,
+                "time_score": time_score,
+                "reputation_score": reputation_score,
+                "total_score": total_score
+            }
+        
+        # Find the winner
+        winner_id = max(bid_scores, key=bid_scores.get)
+        winning_bid = bid_details[winner_id]["bid"]
+        
+        # Generate reasoning using LLM or rule-based
+        if self.use_llm and self.llm:
+            # Create a detailed prompt for LLM decision reasoning
+            bid_summary = "\n".join([
+                f"  - {details['bid'].sender_id}: ${details['bid'].offer_price:.2f}, "
+                f"ETA {details['bid'].eta_estimate:.1f}h, "
+                f"Score: {details['total_score']:.3f} "
+                f"(Price: {details['price_score']:.2f}, Time: {details['time_score']:.2f}, Rep: {details['reputation_score']:.2f})"
+                for details in bid_details.values()
+            ])
+            
+            prompt = f"""You are a warehouse logistics manager evaluating bids from carriers.
+
+ORDER DETAILS:
+- Order: {order.order_id}
+- Route: {order.origin} → {order.destination}
+- Weight: {order.weight_kg}kg
+- Priority: {order.priority.value}
+- Max Budget: ${order.max_budget:.2f}
+
+EVALUATION WEIGHTS:
+- Price: {price_weight:.0%}
+- Time: {time_weight:.0%}
+- Reputation: {reputation_weight:.0%}
+
+BIDS RECEIVED:
+{bid_summary}
+
+WINNER: {winner_id} with score {bid_scores[winner_id]:.3f}
+- Price: ${winning_bid.offer_price:.2f}
+- ETA: {winning_bid.eta_estimate:.1f} hours
+- Carrier Reasoning: {winning_bid.reasoning}
+
+Explain in 2-3 sentences why you selected this carrier over the others. Be specific about the tradeoffs."""
+            
+            try:
+                response = self.llm.invoke(prompt)
+                reasoning = response.content.strip()
+            except Exception as e:
+                reasoning = self._generate_rule_based_reasoning(
+                    winner_id, winning_bid, bid_details, price_weight, time_weight, reputation_weight
+                )
+        else:
+            reasoning = self._generate_rule_based_reasoning(
+                winner_id, winning_bid, bid_details, price_weight, time_weight, reputation_weight
+            )
+        
+        self.logger.monologue(
+            context=f"Evaluating {len(bids)} bids for Order {order.order_id}",
+            reasoning=f"Bids analyzed with weights: Price {price_weight:.0%}, Time {time_weight:.0%}, Rep {reputation_weight:.0%}\n\n{reasoning}",
+            decision=f"Selected {winner_id}: ${winning_bid.offer_price:.2f} @ {winning_bid.eta_estimate:.1f}h",
+            confidence=0.85
+        )
+        
+        return {
+            "winner_id": winner_id,
+            "winning_bid": winning_bid,
+            "scores": bid_scores,
+            "reasoning": reasoning,
+            "bid_details": bid_details
+        }
+    
+    def _generate_rule_based_reasoning(
+        self,
+        winner_id: str,
+        winning_bid: NegotiationOffer,
+        bid_details: Dict[str, Any],
+        price_weight: float,
+        time_weight: float,
+        reputation_weight: float
+    ) -> str:
+        """Generate selection reasoning using rules."""
+        winner_details = bid_details[winner_id]
+        
+        # Identify strongest factor
+        scores = {
+            "price": winner_details["price_score"],
+            "time": winner_details["time_score"],
+            "reputation": winner_details["reputation_score"]
+        }
+        best_factor = max(scores, key=scores.get)
+        
+        reasoning_parts = []
+        reasoning_parts.append(
+            f"Selected {winner_id} with overall score of {winner_details['total_score']:.3f}."
+        )
+        
+        if best_factor == "price":
+            reasoning_parts.append(
+                f"This carrier offered the most competitive price of ${winning_bid.offer_price:.2f}, "
+                f"which is crucial given our {price_weight:.0%} price weight."
+            )
+        elif best_factor == "time":
+            reasoning_parts.append(
+                f"This carrier offers the fastest delivery at {winning_bid.eta_estimate:.1f} hours, "
+                f"which aligns with our {time_weight:.0%} time priority."
+            )
+        else:
+            reasoning_parts.append(
+                f"This carrier has a strong reputation (score: {scores['reputation']:.2f}), "
+                f"providing reliability worth the {reputation_weight:.0%} weight we assign to trust."
+            )
+        
+        # Add note about tradeoffs
+        other_bids = [d for cid, d in bid_details.items() if cid != winner_id]
+        if other_bids:
+            reasoning_parts.append(
+                f"While other carriers offered variations in price/time tradeoffs, "
+                f"this bid provides the best overall value for our current priorities."
+            )
+        
+        return " ".join(reasoning_parts)
 
 
 class CarrierAgent(BaseAgent):
@@ -514,7 +832,9 @@ class CarrierAgent(BaseAgent):
         llm: Optional[Any] = None,
         fleet_size: int = 5,
         profit_target: float = 2.5,
-        use_llm: bool = True
+        use_llm: bool = True,
+        persona: Optional[CarrierPersona] = None,
+        company_name: Optional[str] = None
     ):
         # Initialize LLM if not provided
         if llm is None and use_llm:
@@ -533,14 +853,172 @@ class CarrierAgent(BaseAgent):
                 print(f"⚠️  LLM initialization failed: {e} - using rule-based logic")
         
         super().__init__(agent_id, AgentType.CARRIER, llm)
+        
+        # Load reputation from database or create new
+        reputation = db.load_reputation_score(agent_id)
+        if reputation is None:
+            reputation = ReputationScore(
+                agent_id=agent_id,
+                agent_type=AgentType.CARRIER
+            )
+            db.save_reputation_score(reputation)
+        
+        # Apply persona-specific configurations
+        persona_config = self._get_persona_config(persona)
+        
         self.state = CarrierState(
             agent_id=agent_id,
             fleet_size=fleet_size,
             available_trucks=fleet_size,
             current_location=location,
-            profit_target_per_mile=profit_target
+            profit_target_per_mile=persona_config.get("profit_target", profit_target),
+            fuel_cost_per_mile=persona_config.get("fuel_cost_per_mile", 0.50),
+            reputation=reputation,
+            persona=persona,
+            company_name=company_name or persona_config.get("company_name", "Generic Carrier"),
+            speed_priority=persona_config.get("speed_priority", 1.0),
+            green_rating=persona_config.get("green_rating", 0.5)
         )
         self.use_llm = use_llm and llm is not None
+    
+    def _get_persona_config(self, persona: Optional[CarrierPersona]) -> Dict[str, Any]:
+        """Get configuration based on carrier persona."""
+        configs = {
+            CarrierPersona.PREMIUM: {
+                "company_name": "SwiftLogistics",
+                "profit_target": 3.50,
+                "fuel_cost_per_mile": 0.45,  # Better fuel efficiency
+                "speed_priority": 1.8,
+                "green_rating": 0.6
+            },
+            CarrierPersona.GREEN: {
+                "company_name": "EcoFreight",
+                "profit_target": 2.80,
+                "fuel_cost_per_mile": 0.40,  # Excellent fuel efficiency
+                "speed_priority": 0.9,
+                "green_rating": 0.95
+            },
+            CarrierPersona.DISCOUNT: {
+                "company_name": "BudgetTrucking",
+                "profit_target": 1.80,
+                "fuel_cost_per_mile": 0.65,  # Older fleet, higher fuel cost
+                "speed_priority": 0.7,
+                "green_rating": 0.3
+            }
+        }
+        
+        if persona and persona in configs:
+            return configs[persona]
+        
+        # Default configuration
+        return {
+            "company_name": "Generic Carrier",
+            "profit_target": 2.5,
+            "fuel_cost_per_mile": 0.50,
+            "speed_priority": 1.0,
+            "green_rating": 0.5
+        }
+    
+    def create_initial_bid(
+        self,
+        order: Order,
+        world: WorldState,
+        auction_id: str
+    ) -> NegotiationOffer:
+        """
+        Create an initial bid for an auction.
+        
+        Args:
+            order: The order being bid on
+            world: Current world state
+            auction_id: The marketplace auction ID
+            
+        Returns:
+            NegotiationOffer with the carrier's bid
+        """
+        # Get route information
+        route = world.get_route(order.origin, order.destination)
+        if route:
+            distance = route.base_distance
+            fuel_mult = route.fuel_multiplier
+            weather = route.weather_status.value
+        else:
+            path, distance = world.get_shortest_path(order.origin, order.destination)
+            fuel_mult = 1.0
+            weather = "CLEAR"
+        
+        # Calculate base costs
+        fuel_cost = distance * self.state.fuel_cost_per_mile * fuel_mult
+        base_price = distance * self.state.profit_target_per_mile * fuel_mult
+        
+        # Apply persona-specific adjustments
+        if self.state.persona == CarrierPersona.PREMIUM:
+            # Premium carriers charge more but promise faster delivery
+            bid_price = base_price * 1.15
+            eta = world.estimate_travel_time(order.origin, order.destination) * 0.85
+            reasoning = (
+                f"SwiftLogistics premium bid: ${bid_price:.2f}\n"
+                f"Our fleet prioritizes speed with guaranteed expedited delivery.\n"
+                f"Estimated delivery: {eta:.1f} hours (15% faster than standard).\n"
+                f"Premium service includes real-time tracking and priority routing."
+            )
+        elif self.state.persona == CarrierPersona.GREEN:
+            # Green carriers charge mid-range, emphasize sustainability
+            bid_price = base_price * 1.08
+            eta = world.estimate_travel_time(order.origin, order.destination) * 1.05
+            reasoning = (
+                f"EcoFreight sustainable bid: ${bid_price:.2f}\n"
+                f"Our eco-friendly fleet uses optimized routes to minimize emissions.\n"
+                f"Estimated delivery: {eta:.1f} hours with carbon-neutral shipping.\n"
+                f"95% green rating with latest fuel-efficient technology."
+            )
+        elif self.state.persona == CarrierPersona.DISCOUNT:
+            # Discount carriers offer lowest prices but slower
+            bid_price = base_price * 0.92
+            eta = world.estimate_travel_time(order.origin, order.destination) * 1.15
+            reasoning = (
+                f"BudgetTrucking competitive bid: ${bid_price:.2f}\n"
+                f"We offer the most cost-effective solution for your shipping needs.\n"
+                f"Estimated delivery: {eta:.1f} hours.\n"
+                f"Reliable service at unbeatable prices."
+            )
+        else:
+            # Default/generic carrier
+            bid_price = base_price
+            eta = world.estimate_travel_time(order.origin, order.destination)
+            reasoning = (
+                f"Standard bid: ${bid_price:.2f} for {distance:.0f} miles.\n"
+                f"Estimated delivery: {eta:.1f} hours.\n"
+                f"Competitive pricing with reliable service."
+            )
+        
+        # Ensure bid doesn't exceed order max budget
+        if bid_price > order.max_budget:
+            bid_price = order.max_budget * 0.95
+            reasoning += f"\n\nAdjusted to fit budget constraint of ${order.max_budget:.2f}."
+        
+        confidence = 0.8
+        
+        self.logger.monologue(
+            context=f"Creating bid for Order {order.order_id} ({order.origin} → {order.destination})",
+            reasoning=reasoning,
+            decision=f"Bid: ${bid_price:.2f}, ETA: {eta:.1f}h",
+            confidence=confidence
+        )
+        
+        return NegotiationOffer(
+            offer_id=f"BID-{uuid.uuid4().hex[:8]}",
+            round_number=1,
+            sender_id=self.agent_id,
+            sender_type=AgentType.CARRIER,
+            recipient_id="",  # Will be set by auction
+            order_id=order.order_id,
+            offer_price=bid_price,
+            reasoning=reasoning,
+            eta_estimate=eta,
+            status=NegotiationStatus.PENDING,
+            confidence=confidence
+        )
     
     def respond_to_offer(
         self,
@@ -641,7 +1119,7 @@ class CarrierAgent(BaseAgent):
                 current_location=self.state.current_location,
                 profit_target_per_mile=self.state.profit_target_per_mile,
                 fuel_cost_per_mile=self.state.fuel_cost_per_mile,
-                reputation_score=self.state.reputation_score,
+                reputation_score=self.state.reputation.overall_score,
                 order_id=order.order_id,
                 origin=order.origin,
                 destination=order.destination,
@@ -691,6 +1169,73 @@ class CarrierAgent(BaseAgent):
             reasoning=reasoning,
             counter_eta=eta
         )
+    
+    def evaluate_warehouse_reputation(self, warehouse_id: str) -> Dict[str, Any]:
+        """
+        Evaluate a warehouse's reputation and payment history.
+        
+        Args:
+            warehouse_id: The warehouse's ID
+            
+        Returns:
+            Dictionary with reputation analysis
+        """
+        warehouse_rep = self.get_partner_reputation(warehouse_id)
+        
+        if warehouse_rep is None:
+            return {
+                "warehouse_id": warehouse_id,
+                "reputation_found": False,
+                "recommendation": "NEUTRAL",
+                "reasoning": "No past history with this warehouse. Proceed with standard terms."
+            }
+        
+        # Analyze reputation
+        score = warehouse_rep.overall_score
+        fairness = warehouse_rep.negotiation_fairness
+        total_deals = warehouse_rep.total_deals
+        avg_rounds = warehouse_rep.avg_negotiation_rounds
+        
+        # Determine recommendation
+        if score >= 0.8 and fairness >= 0.75:
+            recommendation = "PREFERRED_CLIENT"
+            reasoning = (
+                f"Excellent reputation (score: {score:.2f}, fairness: {fairness:.2f}). "
+                f"Based on {total_deals} deals, avg {avg_rounds:.1f} rounds. "
+                f"Reliable partner - can offer competitive rates."
+            )
+        elif score >= 0.6 and fairness >= 0.5:
+            recommendation = "GOOD_CLIENT"
+            reasoning = (
+                f"Good reputation (score: {score:.2f}, fairness: {fairness:.2f}). "
+                f"Based on {total_deals} deals, avg {avg_rounds:.1f} rounds. "
+                f"Standard negotiation approach recommended."
+            )
+        elif score >= 0.4:
+            recommendation = "DIFFICULT_CLIENT"
+            reasoning = (
+                f"Mixed reputation (score: {score:.2f}, fairness: {fairness:.2f}). "
+                f"Based on {total_deals} deals, avg {avg_rounds:.1f} rounds. "
+                f"Expect tough negotiations - maintain firm pricing."
+            )
+        else:
+            recommendation = "RISKY_CLIENT"
+            reasoning = (
+                f"Poor reputation (score: {score:.2f}, fairness: {fairness:.2f}). "
+                f"Based on {total_deals} deals, avg {avg_rounds:.1f} rounds. "
+                f"Require higher margins or avoid if alternatives exist."
+            )
+        
+        return {
+            "warehouse_id": warehouse_id,
+            "reputation_found": True,
+            "overall_score": score,
+            "negotiation_fairness": fairness,
+            "total_deals": total_deals,
+            "avg_negotiation_rounds": avg_rounds,
+            "recommendation": recommendation,
+            "reasoning": reasoning
+        }
 
 
 # =============================================================================

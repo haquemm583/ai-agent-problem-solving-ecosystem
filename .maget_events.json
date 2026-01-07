@@ -264,5 +264,261 @@
       "decision": "COUNTER_OFFER: $650.00",
       "confidence": 0.8
     }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:10:21.391459",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "Initial offer: $650.00 with ETA 3.8h",
+    "data": {
+      "context": "Creating initial offer for Order ORD-3D6816",
+      "reasoning": "No carrier offer has been provided yet (round 1/5), so we should set an anchor that minimizes cost while remaining realistic. The route fair price range is $525.00\u2013$984.38, and our order maximum budget is $750.00, so we must stay below $750. With CLEAR weather and a 1.00x fuel multiplier, there are no external cost pressures. Priority is MEDIUM with a 24-hour deadline; 210 miles is easily achievable well within the deadline, so we can negotiate toward the lower-middle of the fair range rather than paying a premium. A $650.00 counter offer is within budget, competitive, and should still be attractive to carriers for a short-haul shipment.",
+      "decision": "Initial offer: $650.00 with ETA 3.8h",
+      "confidence": 0.74
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:10:24.853069",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "ACCEPTED: $650.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $650.00 (Round 1)",
+      "reasoning": "Warehouse offer is $650, which is within the fair range ($525\u2013$984.38) and below the client max budget ($750). Distance is 210 miles; fuel cost is $0.50/mi with 1.00x multiplier, so estimated fuel cost is $105. This leaves $545 contribution after fuel, yielding profit per mile of about $2.60 (($650-$105)/210), which meets/exceeds the $2.50/mi target while maintaining a strong reputation by accepting a reasonable first-round offer. Weather is clear, reducing risk of delay/cost overruns.",
+      "decision": "ACCEPTED: $650.00",
+      "confidence": 0.88
+    }
+  },
+  {
+    "event_type": "NEGOTIATION_START",
+    "timestamp": "2026-01-07T10:13:45.979033",
+    "agent_id": null,
+    "agent_type": null,
+    "title": "Negotiation Started",
+    "message": "Order ORD-61BF8D: Corpus Christi \u2192 Houston",
+    "data": {
+      "negotiation_id": "NEG-0c9a5920",
+      "order_id": "ORD-61BF8D",
+      "origin": "Corpus Christi",
+      "destination": "Houston",
+      "warehouse_id": "WH-001",
+      "carrier_id": "CR-001"
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:13:50.980549",
+    "agent_id": "WH-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "Initial offer: $650.00 with ETA 3.8h",
+    "data": {
+      "context": "Creating initial offer for Order ORD-61BF8D",
+      "reasoning": "No carrier offer has been provided yet (initial round), so we should open with a cost-controlled counter offer. The lane is 210 miles with clear weather and no fuel surcharge (1.00x), and the fair market range is $525.00\u2013$984.38. Our order has a 24-hour deadline with MEDIUM priority, so urgency is moderate and we can negotiate. The maximum budget for this shipment is $750.00, and $650.00 is within budget while still competitive and above the low end of the fair range to encourage acceptance.",
+      "decision": "Initial offer: $650.00 with ETA 3.8h",
+      "confidence": 0.74
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:13:55.574063",
+    "agent_id": "CR-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "ACCEPTED: $650.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $650.00 (Round 1)",
+      "reasoning": "Route is 210 miles with clear weather and no fuel multiplier impact. Base fuel cost is $105.00 ($0.50/mi). At the offered $650.00, revenue per mile is $3.10/mi and net after fuel is approximately ($650 - $105) / 210 = $2.60/mi, which meets/exceeds the $2.50 target profit per mile while staying within the client\u2019s max budget ($750) and within the fair market range. With 5 trucks available and medium priority, accepting in round 1 avoids unnecessary negotiation risk and protects reputation.",
+      "decision": "ACCEPTED: $650.00",
+      "confidence": 0.86
+    }
+  },
+  {
+    "event_type": "NEGOTIATION_END",
+    "timestamp": "2026-01-07T10:13:55.593435",
+    "agent_id": null,
+    "agent_type": null,
+    "title": "Negotiation ACCEPTED",
+    "message": "Final: $650.00 after 1 round(s)",
+    "data": {
+      "negotiation_id": "NEG-0c9a5920",
+      "status": "ACCEPTED",
+      "agreed_price": 650.0,
+      "rounds": 1
+    }
+  },
+  {
+    "event_type": "NEGOTIATION_START",
+    "timestamp": "2026-01-07T10:14:23.445147",
+    "agent_id": null,
+    "agent_type": null,
+    "title": "Negotiation Started",
+    "message": "Order ORD-403BCF: Corpus Christi \u2192 Houston",
+    "data": {
+      "negotiation_id": "NEG-3cf0eb01",
+      "order_id": "ORD-403BCF",
+      "origin": "Corpus Christi",
+      "destination": "Houston",
+      "warehouse_id": "WH-001",
+      "carrier_id": "CR-001"
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:14:29.591634",
+    "agent_id": "WH-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "Initial offer: $650.00 with ETA 3.8h",
+    "data": {
+      "context": "Creating initial offer for Order ORD-403BCF",
+      "reasoning": "No carrier offer has been provided yet, so we should open with a cost-optimized but fair counter within the lane\u2019s fair-price range. The route is short (210 miles), weather is clear, and fuel multiplier is neutral (1.00x), which supports pricing toward the lower-middle of the fair range ($525.00\u2013$984.38). Our maximum budget for this load is $750.00, so we must stay under that while still being competitive to secure capacity. Given MEDIUM priority and a 24-hour deadline (not high urgency), a $650.00 offer balances cost control with a strong chance of acceptance.",
+      "decision": "Initial offer: $650.00 with ETA 3.8h",
+      "confidence": 0.74
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:14:35.866634",
+    "agent_id": "CR-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "ACCEPTED: $650.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $650.00 (Round 1)",
+      "reasoning": "The warehouse offer of $650 is within the fair price range ($525.00-$984.38) and below the client's max budget ($750). At 210 miles, this yields $3.10/mi revenue. With fuel cost at $0.50/mi (CLEAR weather, 1.00x multiplier), estimated fuel is $105, leaving ~$545 contribution and ~$2.60/mi above fuel, meeting the $2.50/mi target profit metric. With 5 trucks available and current location Houston (close to destination), accepting in round 1 preserves reputation and avoids risking the deal through repeated countering.",
+      "decision": "ACCEPTED: $650.00",
+      "confidence": 0.9
+    }
+  },
+  {
+    "event_type": "NEGOTIATION_END",
+    "timestamp": "2026-01-07T10:14:35.884619",
+    "agent_id": null,
+    "agent_type": null,
+    "title": "Negotiation ACCEPTED",
+    "message": "Final: $650.00 after 1 round(s)",
+    "data": {
+      "negotiation_id": "NEG-3cf0eb01",
+      "status": "ACCEPTED",
+      "agreed_price": 650.0,
+      "rounds": 1
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:39:31.532534",
+    "agent_id": "CR-SWIFT-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "Bid: $712.50, ETA: 3.2h",
+    "data": {
+      "context": "Creating bid for Order ORD-A0EC65 (Corpus Christi \u2192 Houston)",
+      "reasoning": "SwiftLogistics premium bid: $845.25\nOur fleet prioritizes speed with guaranteed expedited delivery.\nEstimated delivery: 3.2 hours (15% faster than standard).\nPremium service includes real-time tracking and priority routing.\n\nAdjusted to fit budget constraint of $750.00.",
+      "decision": "Bid: $712.50, ETA: 3.2h",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:39:31.552904",
+    "agent_id": "CR-ECO-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "Bid: $635.04, ETA: 4.0h",
+    "data": {
+      "context": "Creating bid for Order ORD-A0EC65 (Corpus Christi \u2192 Houston)",
+      "reasoning": "EcoFreight sustainable bid: $635.04\nOur eco-friendly fleet uses optimized routes to minimize emissions.\nEstimated delivery: 4.0 hours with carbon-neutral shipping.\n95% green rating with latest fuel-efficient technology.",
+      "decision": "Bid: $635.04, ETA: 4.0h",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:39:31.573463",
+    "agent_id": "CR-BUDGET-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "Bid: $347.76, ETA: 4.4h",
+    "data": {
+      "context": "Creating bid for Order ORD-A0EC65 (Corpus Christi \u2192 Houston)",
+      "reasoning": "BudgetTrucking competitive bid: $347.76\nWe offer the most cost-effective solution for your shipping needs.\nEstimated delivery: 4.4 hours.\nReliable service at unbeatable prices.",
+      "decision": "Bid: $347.76, ETA: 4.4h",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:39:34.765953",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "Selected CR-BUDGET-001: $347.76 @ 4.4h",
+    "data": {
+      "context": "Evaluating 3 bids for Order ORD-A0EC65",
+      "reasoning": "Bids analyzed with weights: Price 50%, Time 30%, Rep 20%\n\nCR-BUDGET-001 was selected because it offers by far the lowest price ($347.76), and with price weighted at 50% it outweighs its slower ETA. The tradeoff is a longer delivery time (4.4h vs 3.2h for CR-SWIFT-001), but all carriers have the same reputation score, so paying ~$288 more for faster transit wasn\u2019t justified under the scoring weights and medium priority.",
+      "decision": "Selected CR-BUDGET-001: $347.76 @ 4.4h",
+      "confidence": 0.85
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:41:19.216477",
+    "agent_id": "CR-SWIFT-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "Bid: $712.50, ETA: 3.2h",
+    "data": {
+      "context": "Creating bid for Order ORD-9CA3A2 (Corpus Christi \u2192 Houston)",
+      "reasoning": "SwiftLogistics premium bid: $845.25\nOur fleet prioritizes speed with guaranteed expedited delivery.\nEstimated delivery: 3.2 hours (15% faster than standard).\nPremium service includes real-time tracking and priority routing.\n\nAdjusted to fit budget constraint of $750.00.",
+      "decision": "Bid: $712.50, ETA: 3.2h",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:41:19.243486",
+    "agent_id": "CR-ECO-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "Bid: $635.04, ETA: 4.0h",
+    "data": {
+      "context": "Creating bid for Order ORD-9CA3A2 (Corpus Christi \u2192 Houston)",
+      "reasoning": "EcoFreight sustainable bid: $635.04\nOur eco-friendly fleet uses optimized routes to minimize emissions.\nEstimated delivery: 4.0 hours with carbon-neutral shipping.\n95% green rating with latest fuel-efficient technology.",
+      "decision": "Bid: $635.04, ETA: 4.0h",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:41:19.271816",
+    "agent_id": "CR-BUDGET-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "Bid: $347.76, ETA: 4.4h",
+    "data": {
+      "context": "Creating bid for Order ORD-9CA3A2 (Corpus Christi \u2192 Houston)",
+      "reasoning": "BudgetTrucking competitive bid: $347.76\nWe offer the most cost-effective solution for your shipping needs.\nEstimated delivery: 4.4 hours.\nReliable service at unbeatable prices.",
+      "decision": "Bid: $347.76, ETA: 4.4h",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:41:22.732524",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "Selected CR-BUDGET-001: $347.76 @ 4.4h",
+    "data": {
+      "context": "Evaluating 3 bids for Order ORD-9CA3A2",
+      "reasoning": "Bids analyzed with weights: Price 50%, Time 30%, Rep 20%\n\nCR-BUDGET-001 was selected because it offers by far the lowest price ($347.76), which heavily drives the total score given price is weighted at 50%, while still meeting the medium-priority delivery requirement and staying well under the $750 budget. The tradeoff is a slower ETA (4.4h) compared with CR-SWIFT-001\u2019s 3.2h, but that time savings isn\u2019t worth the large additional cost ($712.50), and all carriers have the same reputation score here.",
+      "decision": "Selected CR-BUDGET-001: $347.76 @ 4.4h",
+      "confidence": 0.85
+    }
   }
 ]

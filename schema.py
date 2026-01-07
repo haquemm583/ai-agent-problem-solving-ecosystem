@@ -4,7 +4,7 @@ Pydantic models for structured agent communication and world state.
 """
 
 from enum import Enum
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -44,6 +44,20 @@ class AgentType(str, Enum):
     WAREHOUSE = "WAREHOUSE"
     CARRIER = "CARRIER"
     ENVIRONMENTAL = "ENVIRONMENTAL"
+
+
+class DealOutcome(str, Enum):
+    """Outcome of a completed deal."""
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class CarrierPersona(str, Enum):
+    """Market personas for carrier agents."""
+    PREMIUM = "PREMIUM"  # SwiftLogistics
+    GREEN = "GREEN"      # EcoFreight
+    DISCOUNT = "DISCOUNT"  # BudgetTrucking
 
 
 # =============================================================================
@@ -105,6 +119,50 @@ class Shipment(BaseModel):
     route: List[str] = Field(..., description="Planned route as list of cities")
     eta_hours: float = Field(..., description="Estimated time of arrival in hours")
     status: str = Field(default="IN_TRANSIT")
+
+
+class DealHistory(BaseModel):
+    """Record of a completed deal for reputation tracking."""
+    deal_id: str = Field(..., description="Unique deal identifier")
+    negotiation_id: str = Field(..., description="Associated negotiation ID")
+    warehouse_id: str = Field(..., description="Warehouse agent involved")
+    carrier_id: str = Field(..., description="Carrier agent involved")
+    order_id: str = Field(..., description="Order that was negotiated")
+    
+    # Deal details
+    agreed_price: float = Field(..., description="Final negotiated price")
+    negotiation_rounds: int = Field(..., description="Number of rounds to reach agreement")
+    outcome: DealOutcome = Field(..., description="Final outcome of the deal")
+    
+    # Performance metrics
+    on_time_delivery: Optional[bool] = Field(default=None, description="Was delivery on time")
+    actual_eta: Optional[float] = Field(default=None, description="Actual delivery time in hours")
+    promised_eta: float = Field(..., description="Promised delivery time in hours")
+    
+    timestamp: datetime = Field(default_factory=datetime.now)
+    completed_at: Optional[datetime] = Field(default=None)
+
+
+class ReputationScore(BaseModel):
+    """Reputation score for an agent based on past performance."""
+    agent_id: str = Field(..., description="Agent identifier")
+    agent_type: AgentType = Field(..., description="Type of agent")
+    
+    # Aggregate metrics
+    total_deals: int = Field(default=0, description="Total number of completed deals")
+    successful_deals: int = Field(default=0, description="Number of successful deals")
+    failed_deals: int = Field(default=0, description="Number of failed deals")
+    
+    # Reputation score (0.0 to 1.0)
+    overall_score: float = Field(default=1.0, ge=0, le=1, description="Overall reputation score")
+    reliability_score: float = Field(default=1.0, ge=0, le=1, description="On-time delivery reliability")
+    negotiation_fairness: float = Field(default=1.0, ge=0, le=1, description="Fairness in negotiations")
+    
+    # Statistics
+    avg_negotiation_rounds: float = Field(default=3.0, description="Average rounds to close deal")
+    on_time_percentage: float = Field(default=1.0, ge=0, le=1, description="Percentage of on-time deliveries")
+    
+    last_updated: datetime = Field(default_factory=datetime.now)
 
 
 # =============================================================================
@@ -172,6 +230,29 @@ class NegotiationState(BaseModel):
     completed_at: Optional[datetime] = Field(default=None)
 
 
+class MarketplaceAuction(BaseModel):
+    """Tracks a competitive bidding auction for an order."""
+    auction_id: str = Field(..., description="Unique auction identifier")
+    order: Order = Field(..., description="The order being auctioned")
+    warehouse_id: str = Field(..., description="Warehouse agent hosting the auction")
+    
+    # Bidding information
+    bids: List[NegotiationOffer] = Field(default_factory=list, description="All bids from carriers")
+    participating_carriers: List[str] = Field(default_factory=list, description="Carrier IDs in auction")
+    
+    # Auction outcome
+    is_complete: bool = Field(default=False)
+    winner_id: Optional[str] = Field(default=None, description="Winning carrier ID")
+    winning_bid: Optional[NegotiationOffer] = Field(default=None)
+    selection_reasoning: str = Field(default="", description="Why this carrier was chosen")
+    
+    # Scoring details
+    bid_scores: Dict[str, float] = Field(default_factory=dict, description="Calculated scores for each bid")
+    
+    started_at: datetime = Field(default_factory=datetime.now)
+    completed_at: Optional[datetime] = Field(default=None)
+
+
 # =============================================================================
 # AGENT INTERNAL STATE MODELS
 # =============================================================================
@@ -196,6 +277,7 @@ class WarehouseState(BaseModel):
     active_negotiations: List[str] = Field(default_factory=list)
     budget_remaining: float = Field(default=10000.0)
     urgency_threshold: float = Field(default=0.7, description="When to prioritize speed over cost")
+    reputation: ReputationScore = Field(default_factory=lambda: ReputationScore(agent_id="", agent_type=AgentType.WAREHOUSE))
 
 
 class CarrierState(BaseModel):
@@ -207,7 +289,13 @@ class CarrierState(BaseModel):
     active_shipments: List[str] = Field(default_factory=list)
     profit_target_per_mile: float = Field(default=2.5, description="Target profit per mile")
     fuel_cost_per_mile: float = Field(default=0.50)
-    reputation_score: float = Field(default=0.9, ge=0, le=1)
+    reputation: ReputationScore = Field(default_factory=lambda: ReputationScore(agent_id="", agent_type=AgentType.CARRIER))
+    
+    # Market persona attributes
+    persona: Optional['CarrierPersona'] = Field(default=None, description="Market persona/brand identity")
+    company_name: str = Field(default="Generic Carrier", description="Company name")
+    speed_priority: float = Field(default=1.0, ge=0.5, le=2.0, description="Speed vs cost tradeoff")
+    green_rating: float = Field(default=0.5, ge=0, le=1, description="Environmental friendliness score")
 
 
 class EnvironmentalState(BaseModel):

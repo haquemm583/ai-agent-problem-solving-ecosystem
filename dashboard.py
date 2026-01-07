@@ -18,11 +18,13 @@ from typing import Dict, List, Optional
 # Import from project
 from schema import (
     Order, OrderPriority, NegotiationState, NegotiationStatus,
-    WeatherStatus, AgentType
+    WeatherStatus, AgentType, MarketplaceAuction
 )
 from world import WorldState, calculate_fair_price_range, EnvironmentalChaosGenerator
 from agents import WarehouseAgent, CarrierAgent, create_negotiation_graph
+from marketplace import MarketplaceOrchestrator, create_default_carrier_fleet
 from event_log import EventLog, EventType, SimulationEvent
+import deal_database as db
 
 # =============================================================================
 # PAGE CONFIG
@@ -71,6 +73,9 @@ def init_session_state():
     if 'negotiation_history' not in st.session_state:
         st.session_state.negotiation_history = []
     
+    if 'auction_history' not in st.session_state:
+        st.session_state.auction_history = []
+    
     if 'events' not in st.session_state:
         st.session_state.events = []
     
@@ -81,6 +86,9 @@ def init_session_state():
         st.session_state.chaos_generator = EnvironmentalChaosGenerator(
             st.session_state.world, chaos_level=0.3
         )
+    
+    if 'marketplace_orchestrator' not in st.session_state:
+        st.session_state.marketplace_orchestrator = MarketplaceOrchestrator(st.session_state.world)
 
 
 # =============================================================================
@@ -287,6 +295,192 @@ def create_route_status_df(world: WorldState) -> pd.DataFrame:
 # =============================================================================
 # EVENT LOG DISPLAY
 # =============================================================================
+
+def display_auction_comparison(auction: MarketplaceAuction):
+    """Display bid comparison table for an auction."""
+    st.subheader("🎪 Marketplace Bidding War")
+    
+    if not auction.bids:
+        st.info("No bids received for this auction.")
+        return
+    
+    # Create bid comparison table
+    bid_data = []
+    for bid in auction.bids:
+        score = auction.bid_scores.get(bid.sender_id, 0)
+        is_winner = bid.sender_id == auction.winner_id
+        
+        bid_data.append({
+            "🏆": "🥇" if is_winner else "",
+            "Carrier": bid.sender_id,
+            "Price": bid.offer_price,
+            "ETA (hrs)": bid.eta_estimate,
+            "Score": score,
+            "Reasoning": bid.reasoning[:80] + "..." if len(bid.reasoning) > 80 else bid.reasoning
+        })
+    
+    df = pd.DataFrame(bid_data)
+    df = df.sort_values("Score", ascending=False)
+    
+    # Style the dataframe
+    st.dataframe(
+        df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Price": st.column_config.NumberColumn("Price", format="$%.2f"),
+            "ETA (hrs)": st.column_config.NumberColumn("ETA", format="%.1f"),
+            "Score": st.column_config.ProgressColumn("Score", min_value=0, max_value=1, format="%.3f")
+        }
+    )
+    
+    # Visualize bid comparison
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Price comparison
+        fig_price = px.bar(
+            df,
+            x="Carrier",
+            y="Price",
+            title="💰 Price Comparison",
+            color="Score",
+            color_continuous_scale="RdYlGn"
+        )
+        fig_price.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color="white")
+        )
+        st.plotly_chart(fig_price, use_container_width=True)
+    
+    with col2:
+        # ETA comparison
+        fig_eta = px.bar(
+            df,
+            x="Carrier",
+            y="ETA (hrs)",
+            title="⏱️ Delivery Time Comparison",
+            color="Score",
+            color_continuous_scale="RdYlGn"
+        )
+        fig_eta.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color="white")
+        )
+        st.plotly_chart(fig_eta, use_container_width=True)
+    
+    # Display selection reasoning
+    if auction.selection_reasoning:
+        st.info(f"**Why this carrier won:** {auction.selection_reasoning}")
+
+
+def display_carrier_leaderboard():
+    """Display carrier leaderboard with statistics."""
+    st.subheader("🏆 Carrier Leaderboard")
+    
+    # Get carrier statistics from marketplace orchestrator
+    if hasattr(st.session_state, 'marketplace_orchestrator'):
+        stats = st.session_state.marketplace_orchestrator.get_carrier_statistics()
+    else:
+        stats = {}
+    
+    if not stats:
+        st.info("No carrier statistics available yet. Run some auctions to see the leaderboard!")
+        return
+    
+    # Create leaderboard data
+    leaderboard_data = []
+    for carrier_id, data in stats.items():
+        # Get carrier persona info from database
+        try:
+            rep = db.load_reputation_score(carrier_id)
+            reputation = rep.overall_score if rep else 0.5
+        except:
+            reputation = 0.5
+        
+        leaderboard_data.append({
+            "Rank": 0,  # Will be calculated after sorting
+            "Carrier": carrier_id,
+            "Wins": data["total_wins"],
+            "Participations": data["total_participations"],
+            "Win %": data["win_percentage"] * 100,
+            "Avg Bid": data.get("avg_bid", 0),
+            "Total Revenue": data["total_wins"] * data.get("avg_bid", 0),
+            "Reputation": reputation
+        })
+    
+    if not leaderboard_data:
+        st.info("No carrier data available.")
+        return
+    
+    df = pd.DataFrame(leaderboard_data)
+    df = df.sort_values("Wins", ascending=False)
+    df["Rank"] = range(1, len(df) + 1)
+    
+    # Add rank icons
+    def get_rank_icon(rank):
+        if rank == 1:
+            return "🥇"
+        elif rank == 2:
+            return "🥈"
+        elif rank == 3:
+            return "🥉"
+        else:
+            return f"{rank}."
+    
+    df["🏆"] = df["Rank"].apply(get_rank_icon)
+    df = df[["🏆", "Carrier", "Wins", "Participations", "Win %", "Avg Bid", "Total Revenue", "Reputation"]]
+    
+    # Display leaderboard
+    st.dataframe(
+        df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Win %": st.column_config.ProgressColumn("Win %", min_value=0, max_value=100, format="%.1f%%"),
+            "Avg Bid": st.column_config.NumberColumn("Avg Bid", format="$%.2f"),
+            "Total Revenue": st.column_config.NumberColumn("Total Revenue", format="$%.2f"),
+            "Reputation": st.column_config.ProgressColumn("Reputation", min_value=0, max_value=1, format="%.2f")
+        }
+    )
+    
+    # Visualizations
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Win percentage chart
+        fig_wins = px.pie(
+            df,
+            values="Wins",
+            names="Carrier",
+            title="📊 Market Share (by Wins)",
+            hole=0.4
+        )
+        fig_wins.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color="white")
+        )
+        st.plotly_chart(fig_wins, use_container_width=True)
+    
+    with col2:
+        # Revenue comparison
+        fig_revenue = px.bar(
+            df,
+            x="Carrier",
+            y="Total Revenue",
+            title="💰 Total Revenue",
+            color="Reputation",
+            color_continuous_scale="Viridis"
+        )
+        fig_revenue.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color="white")
+        )
+        st.plotly_chart(fig_revenue, use_container_width=True)
+
 
 def display_events(events: List[SimulationEvent], max_events: int = 50):
     """Display events in a scrollable log."""
@@ -546,13 +740,17 @@ def main():
             st.rerun()
     
     # Main content area
-    col1, col2 = st.columns([2, 1])
+    tab1, tab2, tab3 = st.tabs(["🗺️ Network View", "🎪 Marketplace", "🏆 Leaderboard"])
     
-    with col1:
-        # Network graph
-        st.subheader("🗺️ Network Map")
-        fig = create_network_graph(st.session_state.world)
-        st.plotly_chart(fig, use_container_width=True)
+    with tab1:
+        # Original network view
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            # Network graph
+            st.subheader("🗺️ Network Map")
+            fig = create_network_graph(st.session_state.world)
+            st.plotly_chart(fig, use_container_width=True)
         
         # Route status table
         st.subheader("🛣️ Route Status")
@@ -591,65 +789,103 @@ def main():
             if latest.agreed_eta:
                 st.markdown(f"**ETA:** {latest.agreed_eta:.1f} hours")
             st.markdown(f"**Rounds:** {latest.current_round}")
-    
-    # Event Log section
-    st.divider()
-    st.subheader("📜 Live Event Log")
-    
-    # Reload events from file
-    events = EventLog.load_from_file()
-    st.session_state.events = events
-    
-    # Event type filter
-    event_filter = st.multiselect(
-        "Filter by event type",
-        options=[e.value for e in EventType],
-        default=[EventType.OFFER.value, EventType.RESPONSE.value, 
-                 EventType.NEGOTIATION_START.value, EventType.NEGOTIATION_END.value]
-    )
-    
-    # Filter events
-    filtered_events = [
-        e for e in events 
-        if e.event_type.value in event_filter
-    ]
-    
-    display_events(filtered_events)
-    
-    # Negotiation history
-    if st.session_state.negotiation_history:
+        
+        # Event Log section
         st.divider()
-        st.subheader("📈 Negotiation History")
+        st.subheader("📜 Live Event Log")
         
-        history_data = []
-        for neg in st.session_state.negotiation_history:
-            history_data.append({
-                "ID": neg.negotiation_id,
-                "Route": f"{neg.order.origin} → {neg.order.destination}",
-                "Status": neg.final_status.value if neg.final_status else "N/A",
-                "Price": f"${neg.agreed_price:.2f}" if neg.agreed_price else "N/A",
-                "Rounds": neg.current_round,
-                "Time": neg.completed_at.strftime("%H:%M:%S") if neg.completed_at else "N/A"
-            })
+        # Reload events from file
+        events = EventLog.load_from_file()
+        st.session_state.events = events
         
-        history_df = pd.DataFrame(history_data)
-        st.dataframe(history_df, use_container_width=True, hide_index=True)
+        # Event type filter
+        event_filter = st.multiselect(
+            "Filter by event type",
+            options=[e.value for e in EventType],
+            default=[EventType.OFFER.value, EventType.RESPONSE.value, 
+                     EventType.NEGOTIATION_START.value, EventType.NEGOTIATION_END.value]
+        )
         
-        # Price trend chart
-        if len(history_data) > 1:
-            prices = [neg.agreed_price for neg in st.session_state.negotiation_history if neg.agreed_price]
-            if prices:
-                fig = px.line(
-                    y=prices,
-                    title="Agreed Price Trend",
-                    labels={"y": "Price ($)", "index": "Negotiation #"}
-                )
-                fig.update_layout(
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    font=dict(color="white")
-                )
-                st.plotly_chart(fig, use_container_width=True)
+        # Filter events
+        filtered_events = [
+            e for e in events 
+            if e.event_type.value in event_filter
+        ]
+        
+        display_events(filtered_events)
+        
+        # Negotiation history
+        if st.session_state.negotiation_history:
+            st.divider()
+            st.subheader("📈 Negotiation History")
+            
+            history_data = []
+            for neg in st.session_state.negotiation_history:
+                history_data.append({
+                    "ID": neg.negotiation_id,
+                    "Route": f"{neg.order.origin} → {neg.order.destination}",
+                    "Status": neg.final_status.value if neg.final_status else "N/A",
+                    "Price": f"${neg.agreed_price:.2f}" if neg.agreed_price else "N/A",
+                    "Rounds": neg.current_round,
+                    "Time": neg.completed_at.strftime("%H:%M:%S") if neg.completed_at else "N/A"
+                })
+            
+            history_df = pd.DataFrame(history_data)
+            st.dataframe(history_df, use_container_width=True, hide_index=True)
+            
+            # Price trend chart
+            if len(history_data) > 1:
+                prices = [neg.agreed_price for neg in st.session_state.negotiation_history if neg.agreed_price]
+                if prices:
+                    fig = px.line(
+                        y=prices,
+                        title="Agreed Price Trend",
+                        labels={"y": "Price ($)", "index": "Negotiation #"}
+                    )
+                    fig.update_layout(
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color="white")
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+    
+    with tab2:
+        # Marketplace view
+        st.subheader("🎪 Competitive Marketplace")
+        
+        # Display latest auction if available
+        if st.session_state.auction_history:
+            latest_auction = st.session_state.auction_history[-1]
+            
+            st.markdown(f"**Latest Auction:** {latest_auction.auction_id}")
+            st.markdown(f"**Order:** {latest_auction.order.order_id} ({latest_auction.order.origin} → {latest_auction.order.destination})")
+            
+            display_auction_comparison(latest_auction)
+        else:
+            st.info("No auction data available. Auctions are created when running the marketplace mode in main.py")
+            
+            # Show instructions
+            with st.expander("📖 How to run marketplace auctions"):
+                st.code("""
+# Run marketplace auction mode
+python main.py auction
+
+# Or run programmatically
+from marketplace import MarketplaceOrchestrator, create_default_carrier_fleet
+from world import WorldState
+from agents import WarehouseAgent
+
+world = WorldState()
+warehouse = WarehouseAgent("WH-001", "Corpus Christi")
+carriers = create_default_carrier_fleet(world)
+orchestrator = MarketplaceOrchestrator(world)
+
+auction = orchestrator.run_auction(warehouse, carriers, order)
+                """, language="python")
+    
+    with tab3:
+        # Carrier leaderboard
+        display_carrier_leaderboard()
     
     # Footer
     st.divider()
