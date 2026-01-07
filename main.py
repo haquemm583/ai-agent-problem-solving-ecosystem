@@ -1,0 +1,375 @@
+"""
+MA-GET: Multi-Agent Generative Economic Twin for Logistics
+Main Orchestration Module
+
+This is the entry point for the negotiation simulation.
+"""
+
+import uuid
+import logging
+from datetime import datetime
+from typing import Optional
+
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
+from rich import box
+
+from schema import (
+    Order, OrderPriority, NegotiationState, NegotiationStatus,
+    GraphState, AgentType, WarehouseState, CarrierState
+)
+from world import WorldState, calculate_fair_price_range
+from agents import WarehouseAgent, CarrierAgent, create_negotiation_graph
+
+
+# =============================================================================
+# RICH CONSOLE SETUP
+# =============================================================================
+
+console = Console()
+
+
+def setup_logging(level: int = logging.INFO) -> None:
+    """Configure logging with rich formatting."""
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | %(name)-20s | %(levelname)-8s | %(message)s",
+        datefmt="%H:%M:%S"
+    )
+
+
+def print_banner():
+    """Print the application banner."""
+    banner = """
+    ╔══════════════════════════════════════════════════════════════════╗
+    ║                                                                  ║
+    ║   ███╗   ███╗ █████╗        ██████╗ ███████╗████████╗           ║
+    ║   ████╗ ████║██╔══██╗      ██╔════╝ ██╔════╝╚══██╔══╝           ║
+    ║   ██╔████╔██║███████║█████╗██║  ███╗█████╗     ██║              ║
+    ║   ██║╚██╔╝██║██╔══██║╚════╝██║   ██║██╔══╝     ██║              ║
+    ║   ██║ ╚═╝ ██║██║  ██║      ╚██████╔╝███████╗   ██║              ║
+    ║   ╚═╝     ╚═╝╚═╝  ╚═╝       ╚═════╝ ╚══════╝   ╚═╝              ║
+    ║                                                                  ║
+    ║   Multi-Agent Generative Economic Twin for Logistics            ║
+    ║   Phase 1: Hello World Negotiation                              ║
+    ║                                                                  ║
+    ╚══════════════════════════════════════════════════════════════════╝
+    """
+    console.print(banner, style="bold cyan")
+
+
+def print_world_state(world: WorldState):
+    """Display the world state in a formatted table."""
+    console.print("\n")
+    console.print(Panel("🌍 WORLD STATE: Texas Logistics Corridor", style="bold green"))
+    
+    # Cities table
+    cities_table = Table(title="📍 Cities", box=box.ROUNDED)
+    cities_table.add_column("City", style="cyan")
+    cities_table.add_column("Inventory", justify="right")
+    cities_table.add_column("Capacity", justify="right")
+    cities_table.add_column("Demand Rate", justify="right")
+    
+    for city in world.get_all_cities():
+        cities_table.add_row(
+            city.name,
+            str(city.current_inventory),
+            str(city.warehouse_capacity),
+            f"{city.demand_rate:.1f}x"
+        )
+    
+    console.print(cities_table)
+    
+    # Routes table
+    routes_table = Table(title="🛣️ Routes", box=box.ROUNDED)
+    routes_table.add_column("Route", style="cyan")
+    routes_table.add_column("Distance", justify="right")
+    routes_table.add_column("Fuel Mult", justify="right")
+    routes_table.add_column("Weather", justify="center")
+    routes_table.add_column("Status", justify="center")
+    
+    weather_icons = {
+        "CLEAR": "☀️",
+        "RAIN": "🌧️",
+        "FOG": "🌫️",
+        "STORM": "⛈️",
+        "SEVERE": "🌪️"
+    }
+    
+    for route in world.get_all_routes():
+        status = "✅ Open" if route.is_open else "🚧 Closed"
+        weather_icon = weather_icons.get(route.weather_status.value, "❓")
+        routes_table.add_row(
+            f"{route.source} ↔ {route.target}",
+            f"{route.base_distance:.0f} mi",
+            f"{route.fuel_multiplier:.2f}x",
+            f"{weather_icon} {route.weather_status.value}",
+            status
+        )
+    
+    console.print(routes_table)
+
+
+def print_order(order: Order, world: WorldState):
+    """Display order details."""
+    console.print("\n")
+    console.print(Panel("📦 ORDER DETAILS", style="bold yellow"))
+    
+    order_table = Table(box=box.ROUNDED)
+    order_table.add_column("Property", style="cyan")
+    order_table.add_column("Value", style="white")
+    
+    order_table.add_row("Order ID", order.order_id)
+    order_table.add_row("Route", f"{order.origin} → {order.destination}")
+    order_table.add_row("Weight", f"{order.weight_kg} kg")
+    order_table.add_row("Priority", order.priority.value)
+    order_table.add_row("Max Budget", f"${order.max_budget:.2f}")
+    order_table.add_row("Deadline", f"{order.deadline_hours} hours")
+    
+    # Add fair price range
+    min_price, max_price = calculate_fair_price_range(
+        world, order.origin, order.destination, order.weight_kg
+    )
+    order_table.add_row("Fair Price Range", f"${min_price:.2f} - ${max_price:.2f}")
+    
+    # Add distance
+    path, distance = world.get_shortest_path(order.origin, order.destination)
+    order_table.add_row("Distance", f"{distance:.0f} miles")
+    order_table.add_row("Route Path", " → ".join(path))
+    
+    console.print(order_table)
+
+
+def print_negotiation_result(negotiation: NegotiationState):
+    """Display the final negotiation result."""
+    console.print("\n")
+    
+    if negotiation.final_status == NegotiationStatus.ACCEPTED:
+        style = "bold green"
+        title = "✅ NEGOTIATION SUCCESSFUL"
+    elif negotiation.final_status == NegotiationStatus.REJECTED:
+        style = "bold red"
+        title = "❌ NEGOTIATION FAILED"
+    else:
+        style = "bold yellow"
+        title = "⏰ NEGOTIATION EXPIRED"
+    
+    console.print(Panel(title, style=style))
+    
+    result_table = Table(box=box.ROUNDED)
+    result_table.add_column("Metric", style="cyan")
+    result_table.add_column("Value", style="white")
+    
+    result_table.add_row("Final Status", negotiation.final_status.value if negotiation.final_status else "N/A")
+    result_table.add_row("Total Rounds", str(negotiation.current_round))
+    
+    if negotiation.agreed_price:
+        result_table.add_row("Agreed Price", f"${negotiation.agreed_price:.2f}")
+    if negotiation.agreed_eta:
+        result_table.add_row("Agreed ETA", f"{negotiation.agreed_eta:.1f} hours")
+    
+    result_table.add_row("Offers Made", str(len(negotiation.offers)))
+    result_table.add_row("Responses Made", str(len(negotiation.responses)))
+    
+    console.print(result_table)
+    
+    # Print negotiation history
+    if negotiation.offers or negotiation.responses:
+        console.print("\n")
+        console.print(Panel("📜 NEGOTIATION HISTORY", style="bold blue"))
+        
+        history_table = Table(box=box.ROUNDED)
+        history_table.add_column("Round", style="dim")
+        history_table.add_column("Agent", style="cyan")
+        history_table.add_column("Action", style="yellow")
+        history_table.add_column("Price", justify="right")
+        
+        # Interleave offers and responses
+        round_num = 1
+        for i, offer in enumerate(negotiation.offers):
+            history_table.add_row(
+                str(round_num),
+                "🏭 Warehouse",
+                "Offer",
+                f"${offer.offer_price:.2f}"
+            )
+            
+            # Find corresponding responses
+            for response in negotiation.responses:
+                if response.offer_id == offer.offer_id or (i < len(negotiation.responses)):
+                    resp = negotiation.responses[i] if i < len(negotiation.responses) else None
+                    if resp:
+                        agent = "🚚 Carrier" if resp.responder_type == AgentType.CARRIER else "🏭 Warehouse"
+                        price = resp.counter_price if resp.counter_price else "-"
+                        if isinstance(price, float):
+                            price = f"${price:.2f}"
+                        history_table.add_row(
+                            "",
+                            agent,
+                            resp.status.value,
+                            price
+                        )
+                    break
+            round_num += 1
+        
+        console.print(history_table)
+
+
+def run_negotiation(
+    order: Order,
+    world: WorldState,
+    warehouse: WarehouseAgent,
+    carrier: CarrierAgent,
+    max_rounds: int = 5
+) -> NegotiationState:
+    """
+    Run a complete negotiation between warehouse and carrier.
+    """
+    console.print("\n")
+    console.print(Panel("🤝 STARTING NEGOTIATION", style="bold magenta"))
+    
+    # Initialize negotiation state
+    negotiation = NegotiationState(
+        negotiation_id=f"NEG-{uuid.uuid4().hex[:8]}",
+        order=order,
+        warehouse_id=warehouse.agent_id,
+        carrier_id=carrier.agent_id,
+        max_rounds=max_rounds
+    )
+    
+    # Create initial graph state
+    initial_state = GraphState(
+        negotiation=negotiation,
+        warehouse_state=warehouse.state,
+        carrier_state=carrier.state,
+        current_speaker=AgentType.WAREHOUSE,
+        messages=[]
+    )
+    
+    # Create and run the negotiation graph
+    graph = create_negotiation_graph(warehouse, carrier, world)
+    
+    console.print(f"\n⏳ Running negotiation (max {max_rounds} rounds)...\n")
+    console.print("-" * 70)
+    
+    # Execute the graph
+    final_state = None
+    for state in graph.stream(initial_state):
+        # The state is a dict with node name as key
+        for node_name, node_state in state.items():
+            # node_state might be a dict or GraphState depending on LangGraph version
+            if isinstance(node_state, dict):
+                # Convert dict to access
+                messages = node_state.get('messages', [])
+                if messages:
+                    console.print(f"  💬 {messages[-1]}")
+                # Keep track of final state as dict
+                final_state = node_state
+            else:
+                # It's a GraphState object
+                final_state = node_state
+                if node_state.messages:
+                    console.print(f"  💬 {node_state.messages[-1]}")
+    
+    console.print("-" * 70)
+    
+    if final_state:
+        # Handle both dict and object access
+        if isinstance(final_state, dict):
+            negotiation = final_state.get('negotiation', negotiation)
+            if isinstance(negotiation, dict):
+                # Reconstruct NegotiationState from dict
+                negotiation = NegotiationState(**negotiation)
+            negotiation.completed_at = datetime.now()
+            return negotiation
+        else:
+            final_state.negotiation.completed_at = datetime.now()
+            return final_state.negotiation
+    
+    return negotiation
+
+
+def main():
+    """Main entry point for the MA-GET simulation."""
+    # Setup
+    setup_logging(logging.WARNING)  # Reduce noise, we have rich output
+    print_banner()
+    
+    # Initialize the world
+    console.print("\n🌍 Initializing Texas Logistics Corridor...", style="bold")
+    world = WorldState()
+    print_world_state(world)
+    
+    # Create agents
+    console.print("\n🤖 Spawning Agents...", style="bold")
+    
+    warehouse = WarehouseAgent(
+        agent_id="WH-CC-001",
+        location="Corpus Christi",
+        budget=10000.0,
+        urgency_threshold=0.7
+    )
+    console.print(f"  🏭 Warehouse Agent: {warehouse.agent_id} @ {warehouse.state.location}")
+    
+    carrier = CarrierAgent(
+        agent_id="CR-TX-001",
+        location="Houston",
+        fleet_size=5,
+        profit_target=2.5
+    )
+    console.print(f"  🚚 Carrier Agent: {carrier.agent_id} @ {carrier.state.current_location}")
+    
+    # Create an order
+    order = Order(
+        order_id=f"ORD-{uuid.uuid4().hex[:6].upper()}",
+        origin="Corpus Christi",
+        destination="Houston",
+        weight_kg=500.0,
+        volume_m3=2.0,
+        priority=OrderPriority.MEDIUM,
+        max_budget=750.0,
+        deadline_hours=24.0
+    )
+    print_order(order, world)
+    
+    # Run the negotiation
+    negotiation_result = run_negotiation(
+        order=order,
+        world=world,
+        warehouse=warehouse,
+        carrier=carrier,
+        max_rounds=5
+    )
+    
+    # Display results
+    print_negotiation_result(negotiation_result)
+    
+    # Final summary
+    console.print("\n")
+    if negotiation_result.final_status == NegotiationStatus.ACCEPTED:
+        savings = order.max_budget - (negotiation_result.agreed_price or 0)
+        console.print(
+            Panel(
+                f"📊 Warehouse saved ${savings:.2f} from max budget\n"
+                f"📊 Carrier will deliver in {negotiation_result.agreed_eta:.1f} hours",
+                title="💰 DEAL SUMMARY",
+                style="bold green"
+            )
+        )
+    else:
+        console.print(
+            Panel(
+                "The negotiation did not result in a deal.\n"
+                "Consider adjusting budgets or constraints.",
+                title="📋 NEXT STEPS",
+                style="bold yellow"
+            )
+        )
+    
+    console.print("\n✨ MA-GET Phase 1 Complete!\n", style="bold cyan")
+
+
+if __name__ == "__main__":
+    main()

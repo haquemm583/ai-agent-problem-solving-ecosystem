@@ -1,0 +1,268 @@
+[
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:04:59.819941",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "Initial offer: $600.00 with ETA 3.8h",
+    "data": {
+      "context": "Creating initial offer for Order ORD-32E6BF",
+      "reasoning": "The fair price range for shipping 500 kg over 210 miles is between $525.00 and $984.38. Given the urgency of the order with a 24-hour deadline and the medium priority, I am willing to offer $600.00, which is within my maximum budget of $750.00. This price reflects a balance between minimizing shipping costs and ensuring timely delivery. It also leaves some room in the budget to accommodate any unforeseen expenses.",
+      "decision": "Initial offer: $600.00 with ETA 3.8h",
+      "confidence": 0.85
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:05.753674",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $675.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 1)",
+      "reasoning": "The warehouse's offer of $600.00 is below my minimum acceptable price of $675.00, which includes the fuel cost and desired profit margin. I need to make a counter-offer that aligns with my target profit per mile while being reasonable enough to maintain the deal. The target price for this route is $525.00, but given my calculations, I can justify a higher offer that still falls within the client's maximum budget. Offering $675.00 would allow me to cover costs and achieve a profit margin of approximately $1.50 per mile, while still being competitive within the fair price range.",
+      "decision": "COUNTER_OFFER: $675.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:08.751568",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "COUNTER_OFFER: $600.00",
+    "data": {
+      "context": "Responding to carrier offer of $675.00 (Round 2)",
+      "reasoning": "The carrier's initial offer of $675.00 is above my preferred price range considering the maximum budget of $750.00. However, it is still within the fair price range for the shipment. Given the urgency of the order and the need to minimize costs, I am proposing a counter offer of $600.00. This amount is reasonable and allows for negotiation while keeping within budget constraints, and it meets the delivery deadline of 24 hours comfortably.",
+      "decision": "COUNTER_OFFER: $600.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:14.003661",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $675.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 2)",
+      "reasoning": "The warehouse's offer of $600.00 is below our minimum acceptable price of $126.00. However, it is also below our target profit per mile. To maximize profit while maintaining reputation and considering the client's budget, I will counter with an offer of $675.00. This amount covers our costs (fuel and operational) and provides a reasonable profit margin, while still being below the client's maximum budget of $750.00. Accepting the warehouse's initial offer may hurt our profitability and set a precedent for future negotiations.",
+      "decision": "COUNTER_OFFER: $675.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:17.202711",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "COUNTER_OFFER: $600.00",
+    "data": {
+      "context": "Responding to carrier offer of $675.00 (Round 3)",
+      "reasoning": "The carrier's initial offer of $675.00 is above our maximum budget of $750.00, which is acceptable. However, given the urgency of the delivery (24 hours) and the fair price range for the route (between $525.00 and $984.38), I believe a counter offer of $600.00 is reasonable. This amount keeps us well within our budget while still being competitive enough for the carrier to consider. Additionally, this offer reflects the urgency of the order, ensuring we meet our delivery deadline without overspending.",
+      "decision": "COUNTER_OFFER: $600.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:22.076205",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $675.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 3)",
+      "reasoning": "The warehouse's current offer of $600.00 does not meet our target profit per mile of $2.50. After calculating the fuel cost and the minimum acceptable price, our cost to operate this order is $126.00. To achieve a reasonable profit margin while remaining within the client's budget, I propose a counter-offer of $675.00. This amount provides a profit that is more aligned with our objectives while still being below the client's maximum budget of $750.00, maintaining our competitive edge and reputation. Additionally, with clear weather, the route is optimal for timely delivery.",
+      "decision": "COUNTER_OFFER: $675.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:25.383272",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "COUNTER_OFFER: $600.00",
+    "data": {
+      "context": "Responding to carrier offer of $675.00 (Round 4)",
+      "reasoning": "The carrier's initial offer of $675.00 is within the fair price range and below the maximum budget, but it is on the higher end. To minimize shipping costs while still meeting the delivery deadline of 24 hours and considering the urgency threshold, I propose a counter offer of $600.00. This amount is still reasonable for a 210-mile trip with a weight of 500 kg, and it allows us to save $75.00 while remaining competitive in the negotiation. Additionally, a lower price may encourage the carrier to accept quickly given the medium priority of the order.",
+      "decision": "COUNTER_OFFER: $600.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:29.416233",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $675.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 4)",
+      "reasoning": "The warehouse has offered $600.00, which is below my minimum acceptable price of $675.00 when considering my costs and target profit margin. Given the fuel cost of $0.50/mile and the target profit of $2.50/mile, I need to ensure that the offer at least meets my target profit while remaining competitive. A counter-offer of $675.00 allows me to cover my costs, achieve a profit margin of approximately $1.25/mile, and still stays within the client's budget, which should be attractive enough for them to consider. This approach minimizes the risk of losing the deal due to repeated rejections. The weather is clear, which further supports smooth operations.",
+      "decision": "COUNTER_OFFER: $675.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:05:33.003242",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "ACCEPTED: $675.00",
+    "data": {
+      "context": "Responding to carrier offer of $675.00 (Round 5)",
+      "reasoning": "The carrier's offer of $675.00 is within the maximum budget of $750.00 and is reasonable given the fair price range of $525.00 to $984.38. Additionally, the urgency threshold is met as the delivery deadline is in 24 hours, and the current offer allows us to efficiently manage costs while ensuring timely delivery.",
+      "decision": "ACCEPTED: $675.00",
+      "confidence": 0.9
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:07:35.675656",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "Initial offer: $600.00 with ETA 3.8h",
+    "data": {
+      "context": "Creating initial offer for Order ORD-DF1816",
+      "reasoning": "The fair price range for shipping is between $525.00 and $984.38, and given the urgency of the order with a 24-hour deadline and a medium priority, I believe a counter-offer of $600.00 is fair. This price is within our maximum budget of $750.00, allowing us to minimize shipping costs while still meeting the delivery deadline. Additionally, the weather is clear, which should facilitate a timely delivery.",
+      "decision": "Initial offer: $600.00 with ETA 3.8h",
+      "confidence": 0.85
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:07:39.272797",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $675.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 1)",
+      "reasoning": "The warehouse's initial offer of $600.00 is below our minimum acceptable price of $630.00 (which includes fuel cost and desired profit margin). To maintain profitability while still being competitive, I propose a counter-offer of $675.00, which is reasonable within the fair price range and allows us to cover costs and secure a profit per mile. Additionally, this counter-offer is likely to be viewed favorably given the medium priority of the order and the clear weather conditions for transport.",
+      "decision": "COUNTER_OFFER: $675.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:07:44.917939",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "COUNTER_OFFER: $600.00",
+    "data": {
+      "context": "Responding to carrier offer of $675.00 (Round 2)",
+      "reasoning": "The carrier's offer of $675.00 is above our ideal price point, but it is within our maximum budget of $750.00. Given the urgency of the order and the fair price range, I believe a counter offer of $600.00 is reasonable, reflecting the urgency while still being a fair negotiation. This amount is also below the previous offer, allowing for potential savings while ensuring timely delivery.",
+      "decision": "COUNTER_OFFER: $600.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:07:48.634320",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $675.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 2)",
+      "reasoning": "The warehouse's offer of $600.00 is below our target profit per mile, which is $2.50. Given the distance of 210 miles, our costs would be calculated as follows: Fuel cost is $105.00, and with a minimum acceptable price of $126.00, we need to maintain a profit margin. A counter-offer of $675.00 aligns closely with our target profit margin and is still within the client's budget. This way, we can maximize profit while remaining competitive. We also want to maintain a good relationship to avoid losing the deal in future negotiations.",
+      "decision": "COUNTER_OFFER: $675.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:07:53.169604",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "COUNTER_OFFER: $600.00",
+    "data": {
+      "context": "Responding to carrier offer of $675.00 (Round 3)",
+      "reasoning": "The carrier's initial offer of $675.00 is within my maximum budget of $750.00 but is still higher than what I believe is a fair price considering the fair price range of $525.00 to $984.38. Given the urgency of the order and the fact that we are at the 3rd round of negotiation, I want to propose a counter offer of $600.00. This amount is still reasonable for the distance and weight involved, and it allows for some negotiation space while staying under my maximum budget. Additionally, it meets the delivery deadline comfortably.",
+      "decision": "COUNTER_OFFER: $600.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:07:56.385905",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $650.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 3)",
+      "reasoning": "The warehouse's initial offer of $600.00 is below my target profit per mile of $2.50 and does not cover my costs adequately. My base fuel cost for this route is $105.00, and I need to ensure at least a minimum acceptable price of $126.00 to cover my costs. By countering with $650.00, I can maintain a reasonable profit margin while remaining competitive within the client's budget and the fair price range. This offer is also strategic to avoid losing the deal after multiple rejections.",
+      "decision": "COUNTER_OFFER: $650.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:08:00.245942",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "COUNTER_OFFER: $600.00",
+    "data": {
+      "context": "Responding to carrier offer of $650.00 (Round 4)",
+      "reasoning": "The carrier's offer of $650.00 is within the maximum budget of $750.00 and is a reasonable price considering the fair price range of $525.00 - $984.38 for a 210-mile distance. However, to minimize costs while still compensating the carrier fairly, I am proposing a counter offer of $600.00. This amount is still competitive and allows us to save $50.00 compared to the current offer. Given the urgency threshold of 70% and the deadline of 24 hours, I believe this counter offer is reasonable and should encourage the carrier to accept, ensuring timely delivery.",
+      "decision": "COUNTER_OFFER: $600.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:08:04.647704",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $675.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 4)",
+      "reasoning": "The warehouse's offer of $600.00 is below our minimum acceptable price of $630.00 (which includes fuel costs and desired profit margin). However, I want to maintain the relationship with the client and avoid losing the deal due to multiple rejections. By countering with $675.00, I can still achieve a reasonable profit margin while staying within the fair price range and the client's budget. This price will also ensure we cover our costs, aiming for a profit/mile that is closer to our target. Given the clear weather, we can also assure timely delivery, which will help maintain our reputation.",
+      "decision": "COUNTER_OFFER: $675.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:08:08.402875",
+    "agent_id": "WH-CC-001",
+    "agent_type": "WAREHOUSE",
+    "title": "WAREHOUSE Monologue",
+    "message": "COUNTER_OFFER: $600.00",
+    "data": {
+      "context": "Responding to carrier offer of $675.00 (Round 5)",
+      "reasoning": "The carrier's current offer of $675.00 is above my maximum budget for this shipment, which is $750.00. However, considering the urgency of the order and the fair price range for the distance, I believe a counter offer of $600.00 is reasonable. It is still within the acceptable range for the distance and allows for a cost-effective solution while meeting the delivery deadline of 24 hours. This price is also competitive enough to incentivize the carrier to accept, given the medium priority of the order.",
+      "decision": "COUNTER_OFFER: $600.00",
+      "confidence": 0.8
+    }
+  },
+  {
+    "event_type": "AGENT_MONOLOGUE",
+    "timestamp": "2026-01-07T10:08:15.601785",
+    "agent_id": "CR-TX-001",
+    "agent_type": "CARRIER",
+    "title": "CARRIER Monologue",
+    "message": "COUNTER_OFFER: $650.00",
+    "data": {
+      "context": "Evaluating warehouse offer of $600.00 (Round 5)",
+      "reasoning": "The warehouse's offer of $600.00 is below my minimum acceptable price of $630.00 to meet my target profit margin of $2.50/mile. However, I want to avoid repeated rejections, which could jeopardize the deal. By countering with $650.00, I am staying within the client's maximum budget of $750.00 while ensuring that my profit margin is sustainable. This price also considers the current fuel costs and the distance involved, which helps maintain my reputation. The weather is clear, which supports timely delivery. I estimate that the delivery will take approximately 5 hours.",
+      "decision": "COUNTER_OFFER: $650.00",
+      "confidence": 0.8
+    }
+  }
+]

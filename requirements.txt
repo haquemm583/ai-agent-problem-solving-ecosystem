@@ -1,0 +1,39 @@
+# MA-GET: Multi-Agent Generative Economic Twin for Logistics
+# Requirements for Phase 1 + Dashboard
+
+# Core
+python-dotenv>=1.0.0
+
+# Data Validation
+pydantic>=2.5.0
+
+# Graph & World State
+networkx>=3.2.0
+
+# LangChain & LangGraph for Agent Orchestration
+langchain>=0.1.0
+langchain-core>=0.1.0
+langchain-openai>=0.0.5
+langgraph>=0.0.20
+
+# Rich Terminal Output
+rich>=13.7.0
+
+# Streamlit Dashboard
+streamlit>=1.30.0
+
+# Visualization
+matplotlib>=3.8.0
+plotly>=5.18.0
+pandas>=2.1.0
+
+# Database (for future persistence)
+# sqlalchemy>=2.0.0
+
+# Optional: Local LLM via Ollama
+# ollama>=0.1.0
+
+# Development
+# pytest>=7.4.0
+# black>=23.12.0
+# ruff>=0.1.0
