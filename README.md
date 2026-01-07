@@ -38,19 +38,40 @@ MA-GET simulates a Texas-based logistics corridor where autonomous AI agents neg
 
 ```
 ai-agent-problem-solving-ecosystem/
-├── main.py              # Orchestration & entry point
-├── agents.py            # Agent logic, prompts & LangGraph workflow
-├── world.py             # NetworkX graph & environment management
-├── schema.py            # Pydantic models for structured communication
-├── dashboard.py         # 🆕 Streamlit 3D Mission Control dashboard
-├── viz_components.py    # 🆕 PyDeck 3D visualization layers
-├── event_log.py         # Real-time event logging system
-├── marketplace.py       # Competitive auction system
-├── requirements.txt     # Python dependencies (includes pydeck)
-├── README.md            # This file
-├── 3D_DASHBOARD_GUIDE.md       # 🆕 Complete 3D visualization guide
-├── 3D_IMPLEMENTATION_SUMMARY.md # 🆕 Technical implementation details
-└── QUICKSTART_3D.md     # 🆕 Quick start for 3D dashboard
+├── main.py                      # Main orchestration & entry point
+├── requirements.txt             # Python dependencies
+├── README.md                    # This file
+├── src/                         # Source code (modular structure)
+│   ├── __init__.py
+│   ├── agents/                  # Agent logic and behaviors
+│   │   ├── __init__.py
+│   │   └── agents.py           # Warehouse, Carrier, and Auditor agents
+│   ├── core/                    # Core business logic
+│   │   ├── __init__.py
+│   │   ├── schema.py           # Pydantic models and data structures
+│   │   ├── world.py            # NetworkX graph & environment
+│   │   ├── marketplace.py      # Multi-carrier auction system
+│   │   ├── market_heartbeat.py # Autonomous demand generation
+│   │   └── deal_database.py    # Deal tracking & reputation system
+│   ├── ui/                      # Dashboard and visualization
+│   │   ├── __init__.py
+│   │   ├── dashboard.py        # Streamlit 3D Mission Control
+│   │   └── viz_components.py   # PyDeck 3D visualization layers
+│   └── utils/                   # Utilities and helpers
+│       ├── __init__.py
+│       └── event_log.py        # Real-time event logging
+├── tests/                       # Test files
+│   ├── test_reputation.py
+│   └── test_autonomous_features.py
+└── docs/                        # Documentation
+    ├── 3D_DASHBOARD_GUIDE.md
+    ├── 3D_IMPLEMENTATION_SUMMARY.md
+    ├── AUTONOMOUS_FEATURES_UPDATE.md
+    ├── IMPLEMENTATION_SUMMARY.md
+    ├── MARKETPLACE_UPDATE.md
+    ├── QUICKSTART_3D.md
+    ├── QUICKSTART_AUTONOMOUS.md
+    └── REPUTATION_SYSTEM.md
 ```
 
 ## 🎮 NEW: 3D Mission Control Dashboard
@@ -64,7 +85,7 @@ The MA-GET system now includes a **stunning 3D visualization dashboard** powered
 pip install -r requirements.txt
 
 # Start the dashboard
-streamlit run dashboard.py
+streamlit run src/ui/dashboard.py
 ```
 
 ### Key Features

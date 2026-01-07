@@ -9,7 +9,7 @@ from datetime import datetime
 import random
 import logging
 
-from schema import (
+from src.core.schema import (
     CityNode, RouteEdge, WorldSnapshot, WeatherStatus,
     EnvironmentalState
 )

@@ -16,13 +16,13 @@ from rich.table import Table
 from rich.text import Text
 from rich import box
 
-from schema import (
+from src.core.schema import (
     Order, OrderPriority, NegotiationState, NegotiationStatus,
     GraphState, AgentType, WarehouseState, CarrierState, MarketplaceAuction
 )
-from world import WorldState, calculate_fair_price_range
-from agents import WarehouseAgent, CarrierAgent, create_negotiation_graph
-from marketplace import MarketplaceOrchestrator, create_default_carrier_fleet
+from src.core.world import WorldState, calculate_fair_price_range
+from src.agents.agents import WarehouseAgent, CarrierAgent, create_negotiation_graph
+from src.core.marketplace import MarketplaceOrchestrator, create_default_carrier_fleet
 
 
 # =============================================================================
@@ -311,7 +311,7 @@ def _record_negotiation_deal(negotiation: NegotiationState, warehouse: Warehouse
         warehouse: Warehouse agent (for recording)
     """
     try:
-        from schema import DealHistory, DealOutcome
+        from src.core.schema import DealHistory, DealOutcome
         
         outcome = DealOutcome.SUCCESS if negotiation.final_status == NegotiationStatus.ACCEPTED else DealOutcome.FAILED
         

@@ -10,8 +10,8 @@ from typing import Dict, List, Optional, Callable
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
-from schema import Order, OrderPriority
-from world import WorldState
+from src.core.schema import Order, OrderPriority
+from src.core.world import WorldState
 
 
 logger = logging.getLogger("MA-GET.MarketHeartbeat")

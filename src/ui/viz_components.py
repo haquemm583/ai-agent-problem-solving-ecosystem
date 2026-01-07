@@ -6,8 +6,8 @@ PyDeck-powered Mission Control view with dynamic layers.
 import pydeck as pdk
 import pandas as pd
 from typing import Dict, List, Tuple
-from schema import WeatherStatus, CityNode, RouteEdge
-from world import WorldState
+from src.core.schema import WeatherStatus, CityNode, RouteEdge
+from src.core.world import WorldState
 
 
 # =============================================================================

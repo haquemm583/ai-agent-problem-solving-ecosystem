@@ -16,14 +16,14 @@ from langgraph.graph import StateGraph, END
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-from schema import (
+from src.core.schema import (
     AgentType, NegotiationStatus, NegotiationOffer, NegotiationResponse,
     NegotiationState, WarehouseState, CarrierState, AgentMonologue,
     GraphState, Order, OrderPriority, ReputationScore, DealHistory, DealOutcome,
     CarrierPersona
 )
-from world import WorldState, calculate_fair_price_range, calculate_shipping_cost
-import deal_database as db
+from src.core.world import WorldState, calculate_fair_price_range, calculate_shipping_cost
+from src.core import deal_database as db
 
 # Load environment variables
 load_dotenv()

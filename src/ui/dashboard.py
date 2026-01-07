@@ -10,11 +10,11 @@ import time
 from datetime import datetime
 
 # Import project modules
-from world import WorldState, EnvironmentalChaosGenerator
-from market_heartbeat import MarketHeartbeat, MarketHeartbeatConfig
-from event_log import EventLog, EventType
-from viz_components import render_3d_map, create_view_state_from_controls
-import deal_database as db
+from src.core.world import WorldState, EnvironmentalChaosGenerator
+from src.core.market_heartbeat import MarketHeartbeat, MarketHeartbeatConfig
+from src.utils.event_log import EventLog, EventType
+from src.ui.viz_components import render_3d_map, create_view_state_from_controls
+from src.core import deal_database as db
 
 # =============================================================================
 # PAGE CONFIGURATION

@@ -5,13 +5,13 @@ Test script to demonstrate the reputation and deal history system.
 import uuid
 from datetime import datetime, timedelta
 
-from schema import (
+from src.core.schema import (
     DealHistory, DealOutcome, ReputationScore, AgentType,
     Order, OrderPriority
 )
-import deal_database as db
-from agents import WarehouseAgent, CarrierAgent
-from world import WorldState
+from src.core import deal_database as db
+from src.agents.agents import WarehouseAgent, CarrierAgent
+from src.core.world import WorldState
 
 
 def test_reputation_system():

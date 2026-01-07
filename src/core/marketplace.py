@@ -8,17 +8,17 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from schema import (
+from src.core.schema import (
     Order, MarketplaceAuction, NegotiationOffer, NegotiationStatus,
     AgentType
 )
-from agents import WarehouseAgent, CarrierAgent
-from world import WorldState
-import deal_database as db
+from src.agents.agents import WarehouseAgent, CarrierAgent
+from src.core.world import WorldState
+from src.core import deal_database as db
 
 # Import event logging
 try:
-    from event_log import log_event
+    from src.utils.event_log import log_event
     EVENT_LOGGING_ENABLED = True
 except ImportError:
     EVENT_LOGGING_ENABLED = False

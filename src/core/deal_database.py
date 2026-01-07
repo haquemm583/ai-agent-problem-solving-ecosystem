@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any
 from datetime import datetime
 from pathlib import Path
 
-from schema import DealHistory, ReputationScore, AgentType, DealOutcome
+from src.core.schema import DealHistory, ReputationScore, AgentType, DealOutcome
 
 
 # Database file path

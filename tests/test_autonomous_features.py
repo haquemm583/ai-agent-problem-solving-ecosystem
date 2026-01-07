@@ -6,8 +6,8 @@ Verifies Market Heartbeat, Auditor Agent, and Data Integrity.
 import sys
 import os
 
-# Add current directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_imports():
     """Test that all new modules can be imported."""
@@ -16,14 +16,14 @@ def test_imports():
     print("=" * 80)
     
     try:
-        from market_heartbeat import MarketHeartbeat, MarketHeartbeatConfig
+        from src.core.market_heartbeat import MarketHeartbeat, MarketHeartbeatConfig
         print("✅ market_heartbeat imported successfully")
     except Exception as e:
         print(f"❌ Failed to import market_heartbeat: {e}")
         return False
     
     try:
-        from agents import AuditorAgent
+        from src.agents.agents import AuditorAgent
         print("✅ AuditorAgent imported successfully")
     except Exception as e:
         print(f"❌ Failed to import AuditorAgent: {e}")
@@ -40,8 +40,8 @@ def test_heartbeat():
     print("=" * 80)
     
     try:
-        from market_heartbeat import MarketHeartbeat, MarketHeartbeatConfig
-        from world import WorldState
+        from src.core.market_heartbeat import MarketHeartbeat, MarketHeartbeatConfig
+        from src.core.world import WorldState
         
         world = WorldState()
         config = MarketHeartbeatConfig(
@@ -87,9 +87,9 @@ def test_auditor():
     print("=" * 80)
     
     try:
-        from agents import AuditorAgent
-        from world import WorldState
-        import deal_database as db
+        from src.agents.agents import AuditorAgent
+        from src.core.world import WorldState
+        from src.core import deal_database as db
         
         # Initialize database
         db.init_database()
@@ -133,8 +133,8 @@ def test_data_integrity():
     print("=" * 80)
     
     try:
-        import deal_database as db
-        from schema import DealHistory, DealOutcome
+        from src.core import deal_database as db
+        from src.core.schema import DealHistory, DealOutcome
         from datetime import datetime
         import uuid
         
