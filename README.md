@@ -38,13 +38,69 @@ MA-GET simulates a Texas-based logistics corridor where autonomous AI agents neg
 
 ```
 ai-agent-problem-solving-ecosystem/
-├── main.py          # Orchestration & entry point
-├── agents.py        # Agent logic, prompts & LangGraph workflow
-├── world.py         # NetworkX graph & environment management
-├── schema.py        # Pydantic models for structured communication
-├── requirements.txt # Python dependencies
-└── README.md        # This file
+├── main.py              # Orchestration & entry point
+├── agents.py            # Agent logic, prompts & LangGraph workflow
+├── world.py             # NetworkX graph & environment management
+├── schema.py            # Pydantic models for structured communication
+├── dashboard.py         # 🆕 Streamlit 3D Mission Control dashboard
+├── viz_components.py    # 🆕 PyDeck 3D visualization layers
+├── event_log.py         # Real-time event logging system
+├── marketplace.py       # Competitive auction system
+├── requirements.txt     # Python dependencies (includes pydeck)
+├── README.md            # This file
+├── 3D_DASHBOARD_GUIDE.md       # 🆕 Complete 3D visualization guide
+├── 3D_IMPLEMENTATION_SUMMARY.md # 🆕 Technical implementation details
+└── QUICKSTART_3D.md     # 🆕 Quick start for 3D dashboard
 ```
+
+## 🎮 NEW: 3D Mission Control Dashboard
+
+The MA-GET system now includes a **stunning 3D visualization dashboard** powered by PyDeck!
+
+### Quick Launch
+
+```bash
+# Install dependencies (includes pydeck)
+pip install -r requirements.txt
+
+# Start the dashboard
+streamlit run dashboard.py
+```
+
+### Key Features
+
+🗺️ **3D Network Visualization**
+- **Inventory Columns**: 3D bars showing warehouse levels (height = inventory)
+- **Route Arcs**: Curved lines showing shipping routes (thickness = cost)
+- **Active Shipments**: Yellow dots marking high-demand areas
+
+🎮 **Interactive Camera Controls**
+- Tilt: 0-85° (see column heights in 3D)
+- Rotate: 0-360° (orbit the network)
+- Zoom: 4.0-8.0 (wide to detailed view)
+- Reset button to return to default
+
+📡 **Live Feed Panel**
+- Natural language news tickers
+- Real-time event translation
+- Instead of: `{"event": "WEATHER", "type": "STORM"}`
+- You see: "🚨 BREAKING: Severe Storm in Houston! Shipping delays expected."
+
+### Color Coding
+
+| Element | Color | Meaning |
+|---------|-------|---------|
+| Inventory | 🟢 Green | <30% capacity |
+| Inventory | 🟡 Yellow | 30-70% capacity |
+| Inventory | 🔴 Red | >70% capacity |
+| Routes | Green→Red | Direction flow |
+| Shipments | 🟡 Yellow | Active zones |
+
+### Documentation
+
+- **[QUICKSTART_3D.md](QUICKSTART_3D.md)**: Installation & testing
+- **[3D_DASHBOARD_GUIDE.md](3D_DASHBOARD_GUIDE.md)**: Complete feature guide
+- **[3D_IMPLEMENTATION_SUMMARY.md](3D_IMPLEMENTATION_SUMMARY.md)**: Technical details
 
 ## 🚀 Quick Start
 
@@ -164,8 +220,9 @@ world.update_fuel_multiplier("Corpus Christi", "Houston", 1.5)
 world.close_route("Dallas", "Houston")
 ```
 
-## 📈 Phase 1 Features
+## 📈 Current Features
 
+### Core System
 - ✅ Pydantic schema for structured agent communication
 - ✅ NetworkX graph for Texas logistics network
 - ✅ LangGraph workflow for negotiation
@@ -173,27 +230,39 @@ world.close_route("Dallas", "Houston")
 - ✅ Fair price calculation based on distance/weight
 - ✅ Environmental chaos generator (weather/fuel)
 
-## 🔜 Future Phases
+### 3D Dashboard (NEW!)
+- ✅ **PyDeck 3D visualization** with three interactive layers
+- ✅ **Camera controls** for tilt, rotate, and zoom
+- ✅ **Live Feed panel** with natural language event translation
+- ✅ **Real-time updates** reflecting world state changes
+- ✅ **Color-coded inventory** visualization (green/yellow/red)
+- ✅ **Route cost visualization** (arc thickness = fuel cost)
 
-### Phase 2: Multi-Agent Expansion
-- Multiple warehouses and carriers
-- Competitive bidding
-- Fleet routing optimization
+### Multi-Agent Marketplace
+- ✅ Multiple carriers competing for contracts
+- ✅ Competitive bidding system
+- ✅ Reputation tracking
+- ✅ Auction-based contract awards
 
-### Phase 3: LLM Integration
+## 🔜 Future Enhancements
+
+### Visualization
+- Animated shipments moving along routes
+- Time-lapse replay of historical data
+- Heat maps for demand/supply
+- VR/AR export capabilities
+
+### AI & Intelligence
 - Connect to Ollama (Llama 3.2-3B / Phi-3.5)
 - Or OpenAI GPT-4o-mini
 - Natural language negotiation strategies
+- Predictive analytics for demand forecasting
 
-### Phase 4: Streamlit Dashboard
-- "God View" visualization
-- Real-time simulation monitoring
-- Interactive parameter tuning
-
-### Phase 5: Persistence & Analytics
+### Data & Analytics
 - SQLite database for history
-- Performance metrics
+- Performance metrics dashboard
 - A/B testing strategies
+- Machine learning optimization
 
 ## 📝 License
 

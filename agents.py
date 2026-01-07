@@ -1406,6 +1406,435 @@ def create_negotiation_graph(
 
 
 # =============================================================================
+# AUDITOR AGENT - Market Explainability and Transparency
+# =============================================================================
+
+class AuditorAgent(BaseAgent):
+    """
+    Auditor Agent: Analyzes market trends and provides explainability.
+    
+    This agent uses LLM to analyze deal history and generate insights about:
+    - Which carriers are winning the most deals
+    - Price trends and their causes (weather, demand, etc.)
+    - Agent behavior patterns and fairness
+    - Market health and recommendations
+    """
+    
+    def __init__(
+        self,
+        agent_id: str = "AUDITOR-001",
+        llm: Optional[Any] = None,
+        use_llm: bool = True
+    ):
+        # Initialize LLM if not provided
+        if llm is None and use_llm:
+            llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0.3,  # Lower temperature for more analytical output
+                api_key=os.getenv("OPENAI_API_KEY")
+            )
+        
+        super().__init__(
+            agent_id=agent_id,
+            agent_type=AgentType.ENVIRONMENTAL,  # Using ENVIRONMENTAL as closest type
+            llm=llm
+        )
+        
+        self.logger = AgentLogger(agent_id, AgentType.ENVIRONMENTAL)
+    
+    def generate_market_report(
+        self,
+        num_recent_deals: int = 50,
+        world: Optional[WorldState] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate a comprehensive market analysis report using LLM.
+        
+        Args:
+            num_recent_deals: Number of recent deals to analyze
+            world: Optional WorldState for context on weather/routes
+            
+        Returns:
+            Dictionary containing report sections and insights
+        """
+        self.logger.action("Generating Market Report", f"Analyzing last {num_recent_deals} deals")
+        
+        # Load recent deals from database
+        all_deals = db.load_deal_history(limit=num_recent_deals)
+        
+        if not all_deals:
+            return {
+                "summary": "No deal history available for analysis.",
+                "total_deals": 0,
+                "timestamp": datetime.now().isoformat()
+            }
+        
+        # Gather statistics
+        stats = self._gather_market_statistics(all_deals)
+        
+        # Generate LLM-based insights
+        insights = self._generate_llm_insights(all_deals, stats, world)
+        
+        # Compile report
+        report = {
+            "report_id": f"RPT-{uuid.uuid4().hex[:8].upper()}",
+            "timestamp": datetime.now().isoformat(),
+            "analysis_period": {
+                "total_deals": len(all_deals),
+                "start_date": all_deals[-1].timestamp.isoformat() if all_deals else None,
+                "end_date": all_deals[0].timestamp.isoformat() if all_deals else None
+            },
+            "statistics": stats,
+            "insights": insights,
+            "recommendations": self._generate_recommendations(stats, insights)
+        }
+        
+        self.logger.monologue(
+            context=f"Market Report Generated: {len(all_deals)} deals analyzed",
+            reasoning=insights.get("market_health_reasoning", "Analysis complete"),
+            decision=f"Generated report {report['report_id']}",
+            confidence=0.85
+        )
+        
+        return report
+    
+    def _gather_market_statistics(self, deals: List[DealHistory]) -> Dict[str, Any]:
+        """Gather statistical data from deal history."""
+        if not deals:
+            return {}
+        
+        # Carrier performance
+        carrier_stats = {}
+        warehouse_stats = {}
+        
+        total_value = 0.0
+        successful_deals = 0
+        failed_deals = 0
+        total_rounds = 0
+        
+        for deal in deals:
+            # Carrier stats
+            if deal.carrier_id not in carrier_stats:
+                carrier_stats[deal.carrier_id] = {
+                    "total_deals": 0,
+                    "total_value": 0.0,
+                    "successful": 0,
+                    "failed": 0,
+                    "avg_rounds": 0.0
+                }
+            
+            carrier_stats[deal.carrier_id]["total_deals"] += 1
+            carrier_stats[deal.carrier_id]["total_value"] += deal.agreed_price
+            
+            if deal.outcome == DealOutcome.SUCCESS:
+                carrier_stats[deal.carrier_id]["successful"] += 1
+                successful_deals += 1
+            else:
+                carrier_stats[deal.carrier_id]["failed"] += 1
+                failed_deals += 1
+            
+            # Warehouse stats
+            if deal.warehouse_id not in warehouse_stats:
+                warehouse_stats[deal.warehouse_id] = {
+                    "total_deals": 0,
+                    "total_spent": 0.0,
+                    "avg_price": 0.0
+                }
+            
+            warehouse_stats[deal.warehouse_id]["total_deals"] += 1
+            warehouse_stats[deal.warehouse_id]["total_spent"] += deal.agreed_price
+            
+            total_value += deal.agreed_price
+            total_rounds += deal.negotiation_rounds
+        
+        # Calculate averages
+        for carrier_id, stats in carrier_stats.items():
+            if stats["total_deals"] > 0:
+                stats["win_rate"] = stats["successful"] / stats["total_deals"]
+                stats["avg_deal_value"] = stats["total_value"] / stats["total_deals"]
+        
+        for warehouse_id, stats in warehouse_stats.items():
+            if stats["total_deals"] > 0:
+                stats["avg_price"] = stats["total_spent"] / stats["total_deals"]
+        
+        # Price trend (last 10 vs previous)
+        price_trend = "stable"
+        if len(deals) >= 20:
+            recent_avg = sum(d.agreed_price for d in deals[:10]) / 10
+            previous_avg = sum(d.agreed_price for d in deals[10:20]) / 10
+            change_pct = ((recent_avg - previous_avg) / previous_avg) * 100
+            
+            if change_pct > 10:
+                price_trend = "rising"
+            elif change_pct < -10:
+                price_trend = "falling"
+        
+        return {
+            "total_deals_analyzed": len(deals),
+            "total_market_value": total_value,
+            "average_deal_value": total_value / len(deals) if deals else 0,
+            "success_rate": successful_deals / len(deals) if deals else 0,
+            "average_negotiation_rounds": total_rounds / len(deals) if deals else 0,
+            "carrier_performance": carrier_stats,
+            "warehouse_performance": warehouse_stats,
+            "price_trend": price_trend,
+            "market_competition": len(carrier_stats)
+        }
+    
+    def _generate_llm_insights(
+        self,
+        deals: List[DealHistory],
+        stats: Dict[str, Any],
+        world: Optional[WorldState]
+    ) -> Dict[str, str]:
+        """Use LLM to generate insights from deal data."""
+        
+        # Prepare context for LLM
+        carrier_summary = "\n".join([
+            f"- {carrier_id}: {data['total_deals']} deals, "
+            f"${data['avg_deal_value']:.2f} avg, "
+            f"{data['win_rate']*100:.1f}% success rate"
+            for carrier_id, data in stats.get("carrier_performance", {}).items()
+        ])
+        
+        # Get weather context if available
+        weather_context = ""
+        if world:
+            routes = world.get_all_routes()
+            weather_summary = {}
+            for route in routes:
+                weather = route.weather_status.value
+                weather_summary[weather] = weather_summary.get(weather, 0) + 1
+            weather_context = ", ".join([f"{count} {weather}" for weather, count in weather_summary.items()])
+        
+        # Create LLM prompt
+        prompt = f"""You are a Market Auditor analyzing a logistics marketplace. Generate insights from the following data:
+
+MARKET STATISTICS:
+- Total Deals: {stats.get('total_deals_analyzed', 0)}
+- Total Value: ${stats.get('total_market_value', 0):.2f}
+- Average Deal: ${stats.get('average_deal_value', 0):.2f}
+- Success Rate: {stats.get('success_rate', 0)*100:.1f}%
+- Avg Negotiation Rounds: {stats.get('average_negotiation_rounds', 0):.1f}
+- Price Trend: {stats.get('price_trend', 'unknown')}
+- Market Competition: {stats.get('market_competition', 0)} carriers
+
+CARRIER PERFORMANCE:
+{carrier_summary}
+
+WEATHER CONDITIONS:
+{weather_context if weather_context else "No weather data available"}
+
+Provide insights on:
+1. Which carrier is dominating and why
+2. Are prices rising, falling, or stable? What might be causing this?
+3. Is any agent acting unfairly or exploiting the system?
+4. Overall market health assessment
+
+Respond in JSON format:
+{{
+    "dominant_carrier": "<carrier_id and explanation>",
+    "price_analysis": "<analysis of price trends and causes>",
+    "fairness_assessment": "<assessment of agent behavior>",
+    "market_health": "<HEALTHY|MODERATE|CONCERNING>",
+    "market_health_reasoning": "<explanation>"
+}}"""
+
+        try:
+            if self.llm:
+                response = self.llm.invoke([HumanMessage(content=prompt)])
+                content = response.content
+                
+                # Try to parse JSON from response
+                import json
+                import re
+                
+                # Extract JSON from markdown code blocks if present
+                json_match = re.search(r'```json\s*(.*?)\s*```', content, re.DOTALL)
+                if json_match:
+                    content = json_match.group(1)
+                
+                insights = json.loads(content)
+                return insights
+            else:
+                # Fallback without LLM
+                return self._generate_rule_based_insights(stats)
+                
+        except Exception as e:
+            self.logger.logger.error(f"Error generating LLM insights: {e}")
+            return self._generate_rule_based_insights(stats)
+    
+    def _generate_rule_based_insights(self, stats: Dict[str, Any]) -> Dict[str, str]:
+        """Generate insights using rule-based logic (fallback when LLM unavailable)."""
+        carrier_perf = stats.get("carrier_performance", {})
+        
+        # Find dominant carrier
+        dominant_carrier = "None"
+        if carrier_perf:
+            top_carrier = max(
+                carrier_perf.items(),
+                key=lambda x: x[1].get("total_deals", 0)
+            )
+            dominant_carrier = f"{top_carrier[0]} with {top_carrier[1]['total_deals']} deals"
+        
+        # Price analysis
+        price_trend = stats.get("price_trend", "stable")
+        price_analysis = f"Prices are {price_trend}. "
+        if price_trend == "rising":
+            price_analysis += "This may be due to increased demand or adverse weather conditions."
+        elif price_trend == "falling":
+            price_analysis += "This suggests increased competition or improved conditions."
+        else:
+            price_analysis += "Market appears stable with balanced supply and demand."
+        
+        # Market health
+        success_rate = stats.get("success_rate", 0)
+        if success_rate > 0.8:
+            market_health = "HEALTHY"
+            health_reason = "High success rate indicates efficient market operations"
+        elif success_rate > 0.5:
+            market_health = "MODERATE"
+            health_reason = "Moderate success rate suggests some inefficiencies"
+        else:
+            market_health = "CONCERNING"
+            health_reason = "Low success rate indicates market friction or misaligned expectations"
+        
+        return {
+            "dominant_carrier": dominant_carrier,
+            "price_analysis": price_analysis,
+            "fairness_assessment": "No obvious exploitation detected in current data.",
+            "market_health": market_health,
+            "market_health_reasoning": health_reason
+        }
+    
+    def _generate_recommendations(
+        self,
+        stats: Dict[str, Any],
+        insights: Dict[str, str]
+    ) -> List[str]:
+        """Generate actionable recommendations based on analysis."""
+        recommendations = []
+        
+        # Market health recommendations
+        market_health = insights.get("market_health", "MODERATE")
+        if market_health == "CONCERNING":
+            recommendations.append(
+                "⚠️ Market health is concerning. Consider investigating failed negotiations "
+                "and adjusting pricing models or carrier availability."
+            )
+        
+        # Competition recommendations
+        num_carriers = stats.get("market_competition", 0)
+        if num_carriers < 3:
+            recommendations.append(
+                "📊 Low carrier competition detected. Consider onboarding more carriers "
+                "to improve market efficiency and pricing."
+            )
+        
+        # Price trend recommendations
+        price_trend = stats.get("price_trend", "stable")
+        if price_trend == "rising":
+            recommendations.append(
+                "📈 Prices are rising. Warehouses should consider increasing budgets or "
+                "adjusting order timing to avoid peak demand periods."
+            )
+        elif price_trend == "falling":
+            recommendations.append(
+                "📉 Prices are falling. Good opportunity for warehouses to negotiate "
+                "favorable long-term contracts."
+            )
+        
+        # Negotiation efficiency
+        avg_rounds = stats.get("average_negotiation_rounds", 0)
+        if avg_rounds > 4:
+            recommendations.append(
+                "🔄 High average negotiation rounds suggest misaligned expectations. "
+                "Consider calibrating initial offers closer to fair market rates."
+            )
+        
+        if not recommendations:
+            recommendations.append(
+                "✅ Market is operating efficiently. Continue monitoring trends."
+            )
+        
+        return recommendations
+    
+    def format_daily_briefing(self, report: Dict[str, Any]) -> str:
+        """
+        Format the market report as a human-readable daily briefing.
+        
+        Args:
+            report: Market report dictionary from generate_market_report()
+            
+        Returns:
+            Formatted string suitable for display
+        """
+        timestamp = datetime.fromisoformat(report["timestamp"])
+        stats = report.get("statistics", {})
+        insights = report.get("insights", {})
+        recommendations = report.get("recommendations", [])
+        
+        briefing = f"""
+╔══════════════════════════════════════════════════════════════════╗
+║                   DAILY ECONOMIC BRIEFING                        ║
+║                   Report ID: {report.get('report_id', 'N/A')}                      ║
+║                   {timestamp.strftime('%Y-%m-%d %H:%M:%S')}                         ║
+╚══════════════════════════════════════════════════════════════════╝
+
+📊 MARKET OVERVIEW
+────────────────────────────────────────────────────────────────────
+• Total Deals Analyzed: {stats.get('total_deals_analyzed', 0)}
+• Total Market Value: ${stats.get('total_market_value', 0):,.2f}
+• Average Deal Value: ${stats.get('average_deal_value', 0):.2f}
+• Market Success Rate: {stats.get('success_rate', 0)*100:.1f}%
+• Avg Negotiation Rounds: {stats.get('average_negotiation_rounds', 0):.1f}
+• Price Trend: {stats.get('price_trend', 'N/A').upper()}
+
+🏆 CARRIER PERFORMANCE
+────────────────────────────────────────────────────────────────────
+"""
+        
+        # Add carrier details
+        carrier_perf = stats.get('carrier_performance', {})
+        for carrier_id, data in sorted(
+            carrier_perf.items(),
+            key=lambda x: x[1].get('total_deals', 0),
+            reverse=True
+        ):
+            briefing += f"""
+{carrier_id}:
+  • Total Deals: {data.get('total_deals', 0)}
+  • Win Rate: {data.get('win_rate', 0)*100:.1f}%
+  • Avg Deal Value: ${data.get('avg_deal_value', 0):.2f}
+"""
+        
+        briefing += f"""
+🔍 MARKET INSIGHTS
+────────────────────────────────────────────────────────────────────
+• Dominant Player: {insights.get('dominant_carrier', 'N/A')}
+
+• Price Analysis: {insights.get('price_analysis', 'N/A')}
+
+• Fairness Assessment: {insights.get('fairness_assessment', 'N/A')}
+
+• Market Health: {insights.get('market_health', 'N/A')}
+  → {insights.get('market_health_reasoning', 'N/A')}
+
+💡 RECOMMENDATIONS
+────────────────────────────────────────────────────────────────────
+"""
+        
+        for i, rec in enumerate(recommendations, 1):
+            briefing += f"{i}. {rec}\n"
+        
+        briefing += """
+════════════════════════════════════════════════════════════════════
+"""
+        
+        return briefing
+
+
+# =============================================================================
 # MAIN (for testing)
 # =============================================================================
 

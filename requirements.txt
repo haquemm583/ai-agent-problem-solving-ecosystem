@@ -26,6 +26,7 @@ streamlit>=1.30.0
 matplotlib>=3.8.0
 plotly>=5.18.0
 pandas>=2.1.0
+pydeck>=0.8.0
 
 # Database (for future persistence)
 # sqlalchemy>=2.0.0

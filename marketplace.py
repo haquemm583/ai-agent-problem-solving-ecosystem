@@ -123,6 +123,10 @@ class MarketplaceOrchestrator:
         # Print results
         self._print_auction_results(auction, evaluation)
         
+        # *** DATA INTEGRITY FIX: Record the deal to database ***
+        if auction.winner_id and auction.winning_bid:
+            self._record_auction_deal(auction, warehouse)
+        
         # Log to event system
         if EVENT_LOGGING_ENABLED:
             self._log_auction_event(auction)
@@ -227,6 +231,41 @@ class MarketplaceOrchestrator:
             )
         except Exception as e:
             logger.warning(f"Failed to log auction event: {e}")
+    
+    def _record_auction_deal(self, auction: MarketplaceAuction, warehouse: WarehouseAgent):
+        """
+        Record the auction result as a DealHistory for reputation tracking.
+        
+        Args:
+            auction: Completed auction
+            warehouse: Warehouse agent (for recording)
+        """
+        try:
+            from schema import DealHistory, DealOutcome
+            
+            deal = DealHistory(
+                deal_id=f"DEAL-{auction.auction_id}",
+                negotiation_id=auction.auction_id,
+                warehouse_id=auction.warehouse_id,
+                carrier_id=auction.winner_id,
+                order_id=auction.order.order_id,
+                agreed_price=auction.winning_bid.offer_price,
+                negotiation_rounds=1,  # Auctions are single round
+                outcome=DealOutcome.SUCCESS,
+                promised_eta=auction.winning_bid.eta_estimate,
+                timestamp=auction.started_at,
+                completed_at=auction.completed_at
+            )
+            
+            # Record the deal
+            warehouse.record_deal(deal)
+            
+            logger.info(f"📝 Recorded auction deal: {deal.deal_id}")
+            print(f"   📝 Deal recorded to database: {deal.deal_id}")
+            
+        except Exception as e:
+            logger.error(f"Failed to record auction deal: {e}")
+            print(f"   ❌ Failed to record deal: {e}")
     
     def get_auction_history(self, limit: int = 10) -> List[MarketplaceAuction]:
         """Get recent completed auctions."""

@@ -284,12 +284,58 @@ def run_negotiation(
                 # Reconstruct NegotiationState from dict
                 negotiation = NegotiationState(**negotiation)
             negotiation.completed_at = datetime.now()
+            
+            # *** DATA INTEGRITY FIX: Record the deal if accepted ***
+            if negotiation.final_status == NegotiationStatus.ACCEPTED:
+                _record_negotiation_deal(negotiation, warehouse)
+            
             return negotiation
         else:
             final_state.negotiation.completed_at = datetime.now()
+            
+            # *** DATA INTEGRITY FIX: Record the deal if accepted ***
+            if final_state.negotiation.final_status == NegotiationStatus.ACCEPTED:
+                _record_negotiation_deal(final_state.negotiation, warehouse)
+            
             return final_state.negotiation
     
     return negotiation
+
+
+def _record_negotiation_deal(negotiation: NegotiationState, warehouse: WarehouseAgent):
+    """
+    Record a completed negotiation as a DealHistory.
+    
+    Args:
+        negotiation: Completed negotiation state
+        warehouse: Warehouse agent (for recording)
+    """
+    try:
+        from schema import DealHistory, DealOutcome
+        
+        outcome = DealOutcome.SUCCESS if negotiation.final_status == NegotiationStatus.ACCEPTED else DealOutcome.FAILED
+        
+        deal = DealHistory(
+            deal_id=f"DEAL-{negotiation.negotiation_id}",
+            negotiation_id=negotiation.negotiation_id,
+            warehouse_id=negotiation.warehouse_id,
+            carrier_id=negotiation.carrier_id,
+            order_id=negotiation.order.order_id,
+            agreed_price=negotiation.agreed_price or 0.0,
+            negotiation_rounds=negotiation.current_round,
+            outcome=outcome,
+            promised_eta=negotiation.agreed_eta or 0.0,
+            timestamp=negotiation.started_at,
+            completed_at=negotiation.completed_at
+        )
+        
+        # Record the deal
+        warehouse.record_deal(deal)
+        
+        console.print(f"\n   📝 Deal recorded to database: {deal.deal_id}", style="dim")
+        
+    except Exception as e:
+        console.print(f"\n   ❌ Failed to record deal: {e}", style="dim red")
 
 
 def print_auction_result(auction: MarketplaceAuction):

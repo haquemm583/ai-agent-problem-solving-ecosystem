@@ -14,6 +14,7 @@ import uuid
 import json
 import os
 from typing import Dict, List, Optional
+import pydeck as pdk
 
 # Import from project
 from schema import (
@@ -21,10 +22,12 @@ from schema import (
     WeatherStatus, AgentType, MarketplaceAuction
 )
 from world import WorldState, calculate_fair_price_range, EnvironmentalChaosGenerator
-from agents import WarehouseAgent, CarrierAgent, create_negotiation_graph
+from agents import WarehouseAgent, CarrierAgent, create_negotiation_graph, AuditorAgent
 from marketplace import MarketplaceOrchestrator, create_default_carrier_fleet
 from event_log import EventLog, EventType, SimulationEvent
+from market_heartbeat import MarketHeartbeat, MarketHeartbeatConfig
 import deal_database as db
+from viz_components import render_3d_map, create_view_state_from_controls, get_default_texas_view
 
 # =============================================================================
 # PAGE CONFIG
@@ -89,6 +92,36 @@ def init_session_state():
     
     if 'marketplace_orchestrator' not in st.session_state:
         st.session_state.marketplace_orchestrator = MarketplaceOrchestrator(st.session_state.world)
+    
+    if 'auditor_agent' not in st.session_state:
+        st.session_state.auditor_agent = AuditorAgent()
+    
+    if 'market_heartbeat' not in st.session_state:
+        config = MarketHeartbeatConfig(
+            tick_interval_seconds=5.0,
+            inventory_depletion_rate=0.05,
+            auto_generate_orders=True,
+            max_orders_per_tick=2
+        )
+        st.session_state.market_heartbeat = MarketHeartbeat(
+            st.session_state.world,
+            config
+        )
+    
+    if 'inventory_history' not in st.session_state:
+        st.session_state.inventory_history = []
+    
+    # 3D Map camera controls
+    if 'camera_lat' not in st.session_state:
+        st.session_state.camera_lat = 29.5
+    if 'camera_lon' not in st.session_state:
+        st.session_state.camera_lon = -96.5
+    if 'camera_zoom' not in st.session_state:
+        st.session_state.camera_zoom = 5.5
+    if 'camera_pitch' not in st.session_state:
+        st.session_state.camera_pitch = 45
+    if 'camera_bearing' not in st.session_state:
+        st.session_state.camera_bearing = 0
 
 
 # =============================================================================
@@ -482,6 +515,74 @@ def display_carrier_leaderboard():
         st.plotly_chart(fig_revenue, use_container_width=True)
 
 
+def convert_event_to_news(event: SimulationEvent) -> str:
+    """
+    Convert raw event data to natural language news ticker format.
+    
+    Examples:
+        Raw: {"event": "WEATHER", "type": "STORM", "loc": "Houston"}
+        Visual: 🚨 BREAKING: Severe Storm in Houston! Shipping delays expected.
+    """
+    # Weather events
+    if event.event_type == EventType.WEATHER_CHANGE:
+        weather = event.data.get('weather', 'UNKNOWN')
+        location = event.data.get('location', 'Unknown Location')
+        
+        weather_news = {
+            'CLEAR': f"☀️ WEATHER UPDATE: Clear skies in {location}. All systems go!",
+            'RAIN': f"🌧️ WEATHER ALERT: Rain reported in {location}. Expect minor delays.",
+            'STORM': f"🚨 BREAKING: Severe Storm in {location}! Shipping delays expected.",
+            'SEVERE': f"⚠️ EMERGENCY: Extreme weather in {location}! Routes may be closed.",
+            'FOG': f"🌫️ TRAFFIC ADVISORY: Heavy fog in {location}. Reduced visibility."
+        }
+        return weather_news.get(weather, f"🌦️ Weather change in {location}: {weather}")
+    
+    # Route updates
+    elif event.event_type == EventType.ROUTE_UPDATE:
+        route = event.data.get('route', 'Unknown Route')
+        is_open = event.data.get('is_open', True)
+        if not is_open:
+            return f"🚧 ROUTE CLOSURE: {route} is now CLOSED due to conditions!"
+        else:
+            return f"✅ ROUTE REOPENED: {route} is now accessible again."
+    
+    # Negotiation starts
+    elif event.event_type == EventType.NEGOTIATION_START:
+        origin = event.data.get('origin', '?')
+        dest = event.data.get('destination', '?')
+        return f"💼 DEAL IN PROGRESS: Negotiation started for {origin} → {dest} shipment"
+    
+    # Negotiation ends
+    elif event.event_type == EventType.NEGOTIATION_END:
+        status = event.data.get('status', 'UNKNOWN')
+        price = event.data.get('price', 0)
+        if status == 'ACCEPTED':
+            return f"🎉 DEAL CLOSED: Agreement reached at ${price:.2f}!"
+        elif status == 'REJECTED':
+            return f"❌ DEAL FAILED: Negotiations broke down. No agreement."
+        else:
+            return f"⏰ DEAL EXPIRED: Time ran out on negotiation."
+    
+    # Offers
+    elif event.event_type == EventType.OFFER:
+        price = event.data.get('price', 0)
+        carrier = event.data.get('carrier_id', 'Unknown')
+        return f"💰 NEW OFFER: {carrier} proposes ${price:.2f} for shipment"
+    
+    # World updates
+    elif event.event_type == EventType.WORLD_UPDATE:
+        return f"🌍 MARKET UPDATE: World state synchronized (Tick {event.data.get('tick', 0)})"
+    
+    # Agent monologues (internal reasoning)
+    elif event.event_type == EventType.AGENT_MONOLOGUE:
+        agent = event.agent_id or "Agent"
+        decision = event.data.get('decision', 'thinking...')
+        return f"🧠 {agent}: {decision}"
+    
+    # Default fallback
+    return f"📰 {event.title}: {event.message}"
+
+
 def display_events(events: List[SimulationEvent], max_events: int = 50):
     """Display events in a scrollable log."""
     
@@ -532,6 +633,45 @@ def display_events(events: List[SimulationEvent], max_events: int = 50):
                     st.markdown(f"**[{time_str}]** {event.title}")
                     if event.message:
                         st.caption(event.message)
+
+
+def display_live_feed(events: List[SimulationEvent], max_events: int = 20):
+    """
+    Display events as natural language news ticker feed.
+    Replaces raw JSON with human-readable breaking news format.
+    """
+    if not events:
+        st.info("📡 Live Feed is quiet... Waiting for market activity.")
+        return
+    
+    # Container for scrollable feed
+    st.markdown("### 📡 Live Market Feed")
+    st.markdown("*Real-time news ticker from the MA-GET ecosystem*")
+    st.markdown("---")
+    
+    # Show most recent events as news tickers
+    for event in reversed(events[-max_events:]):
+        time_str = event.timestamp.strftime("%H:%M:%S")
+        news_text = convert_event_to_news(event)
+        
+        # Create a styled news ticker card
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(90deg, #1e3a5f 0%, #2d5a8f 100%);
+            padding: 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            border-left: 5px solid #4CAF50;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        ">
+            <div style="color: #888; font-size: 10px; margin-bottom: 4px;">
+                {time_str}
+            </div>
+            <div style="color: white; font-size: 14px; font-weight: 500;">
+                {news_text}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # =============================================================================
@@ -740,114 +880,126 @@ def main():
             st.rerun()
     
     # Main content area
-    tab1, tab2, tab3 = st.tabs(["🗺️ Network View", "🎪 Marketplace", "🏆 Leaderboard"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🗺️ Network View",
+        "🎪 Marketplace",
+        "🏆 Leaderboard",
+        "🔍 Market Auditor",
+        "📊 Live Inventory"
+    ])
     
     with tab1:
-        # Original network view
-        col1, col2 = st.columns([2, 1])
+        # 3D Mission Control View
+        st.subheader("🚀 3D Mission Control")
         
-        with col1:
-            # Network graph
-            st.subheader("🗺️ Network Map")
-            fig = create_network_graph(st.session_state.world)
-            st.plotly_chart(fig, use_container_width=True)
+        # Create columns for map and controls
+        map_col, control_col = st.columns([3, 1])
+        
+        with map_col:
+            # Create view state from controls
+            view_state = create_view_state_from_controls(
+                lat=st.session_state.camera_lat,
+                lon=st.session_state.camera_lon,
+                zoom=st.session_state.camera_zoom,
+                pitch=st.session_state.camera_pitch,
+                bearing=st.session_state.camera_bearing
+            )
+            
+            # Render 3D map
+            deck = render_3d_map(st.session_state.world, view_state)
+            st.pydeck_chart(deck)
+        
+        with control_col:
+            st.markdown("### 🎮 Camera Control")
+            
+            # Reset to default view
+            if st.button("🔄 Reset View", use_container_width=True):
+                default_view = get_default_texas_view()
+                st.session_state.camera_lat = default_view.latitude
+                st.session_state.camera_lon = default_view.longitude
+                st.session_state.camera_zoom = default_view.zoom
+                st.session_state.camera_pitch = default_view.pitch
+                st.session_state.camera_bearing = default_view.bearing
+                st.rerun()
+            
+            st.divider()
+            
+            # Camera controls
+            st.session_state.camera_pitch = st.slider(
+                "⬆️ Tilt (Pitch)",
+                min_value=0,
+                max_value=85,
+                value=int(st.session_state.camera_pitch),
+                help="Tilt the camera up/down to see inventory height"
+            )
+            
+            st.session_state.camera_bearing = st.slider(
+                "🔄 Rotate (Bearing)",
+                min_value=0,
+                max_value=360,
+                value=int(st.session_state.camera_bearing),
+                help="Rotate the camera around the map"
+            )
+            
+            st.session_state.camera_zoom = st.slider(
+                "🔍 Zoom",
+                min_value=4.0,
+                max_value=8.0,
+                value=float(st.session_state.camera_zoom),
+                step=0.1,
+                help="Zoom in/out"
+            )
+            
+            st.divider()
+            
+            # Legend
+            st.markdown("### 📊 Legend")
+            st.markdown("""
+            **Inventory Columns:**
+            - 🟢 Green: Low usage (<30%)
+            - 🟡 Yellow: Medium (30-70%)
+            - 🔴 Red: High usage (>70%)
+            
+            **Routes:**
+            - Thickness: Fuel cost
+            - Green→Red: Direction
+            
+            **Yellow Dots:**
+            - Active shipment locations
+            """)
         
         # Route status table
         st.subheader("🛣️ Route Status")
         route_df = create_route_status_df(st.session_state.world)
         st.dataframe(route_df, use_container_width=True, hide_index=True)
-    
-    with col2:
-        # City stats
-        st.subheader("📊 City Inventory")
-        cities = st.session_state.world.get_all_cities()
-        for city in cities:
-            fill_pct = (city.current_inventory / city.warehouse_capacity) * 100
-            st.metric(
-                city.name,
-                f"{city.current_inventory:,}",
-                f"{fill_pct:.0f}% capacity"
-            )
-            st.progress(fill_pct / 100)
         
-        # Latest negotiation result
-        if st.session_state.negotiation_history:
-            st.subheader("📋 Latest Deal")
-            latest = st.session_state.negotiation_history[-1]
-            
-            status_colors = {
-                NegotiationStatus.ACCEPTED: "🟢",
-                NegotiationStatus.REJECTED: "🔴",
-                NegotiationStatus.EXPIRED: "🟡"
-            }
-            
-            status_icon = status_colors.get(latest.final_status, "⚪")
-            st.markdown(f"**Status:** {status_icon} {latest.final_status.value if latest.final_status else 'N/A'}")
-            
-            if latest.agreed_price:
-                st.markdown(f"**Agreed Price:** ${latest.agreed_price:.2f}")
-            if latest.agreed_eta:
-                st.markdown(f"**ETA:** {latest.agreed_eta:.1f} hours")
-            st.markdown(f"**Rounds:** {latest.current_round}")
-        
-        # Event Log section
+        # Add Live Feed section below the map
         st.divider()
-        st.subheader("📜 Live Event Log")
         
-        # Reload events from file
-        events = EventLog.load_from_file()
-        st.session_state.events = events
+        # Create two columns for City Stats and Live Feed
+        city_col, feed_col = st.columns([1, 1])
         
-        # Event type filter
-        event_filter = st.multiselect(
-            "Filter by event type",
-            options=[e.value for e in EventType],
-            default=[EventType.OFFER.value, EventType.RESPONSE.value, 
-                     EventType.NEGOTIATION_START.value, EventType.NEGOTIATION_END.value]
-        )
+        with city_col:
+            # City stats
+            st.subheader("📊 City Inventory")
+            cities = st.session_state.world.get_all_cities()
+            for city in cities:
+                fill_pct = (city.current_inventory / city.warehouse_capacity) * 100
+                st.metric(
+                    city.name,
+                    f"{city.current_inventory:,}",
+                    f"{fill_pct:.0f}% capacity"
+                )
+                st.progress(fill_pct / 100)
         
-        # Filter events
-        filtered_events = [
-            e for e in events 
-            if e.event_type.value in event_filter
-        ]
-        
-        display_events(filtered_events)
-        
-        # Negotiation history
-        if st.session_state.negotiation_history:
-            st.divider()
-            st.subheader("📈 Negotiation History")
+        with feed_col:
+            # Live Feed Panel with Natural Language News
+            # Reload events from file
+            events = EventLog.load_from_file()
+            st.session_state.events = events
             
-            history_data = []
-            for neg in st.session_state.negotiation_history:
-                history_data.append({
-                    "ID": neg.negotiation_id,
-                    "Route": f"{neg.order.origin} → {neg.order.destination}",
-                    "Status": neg.final_status.value if neg.final_status else "N/A",
-                    "Price": f"${neg.agreed_price:.2f}" if neg.agreed_price else "N/A",
-                    "Rounds": neg.current_round,
-                    "Time": neg.completed_at.strftime("%H:%M:%S") if neg.completed_at else "N/A"
-                })
-            
-            history_df = pd.DataFrame(history_data)
-            st.dataframe(history_df, use_container_width=True, hide_index=True)
-            
-            # Price trend chart
-            if len(history_data) > 1:
-                prices = [neg.agreed_price for neg in st.session_state.negotiation_history if neg.agreed_price]
-                if prices:
-                    fig = px.line(
-                        y=prices,
-                        title="Agreed Price Trend",
-                        labels={"y": "Price ($)", "index": "Negotiation #"}
-                    )
-                    fig.update_layout(
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        font=dict(color="white")
-                    )
-                    st.plotly_chart(fig, use_container_width=True)
+            # Display as natural language feed
+            display_live_feed(events, max_events=15)
     
     with tab2:
         # Marketplace view
@@ -887,9 +1039,182 @@ auction = orchestrator.run_auction(warehouse, carriers, order)
         # Carrier leaderboard
         display_carrier_leaderboard()
     
+    with tab4:
+        # Market Auditor tab - NEW
+        st.subheader("🔍 Market Auditor - Economic Briefing")
+        
+        col1, col2 = st.columns([1, 3])
+        
+        with col1:
+            num_deals = st.number_input(
+                "Deals to analyze",
+                min_value=10,
+                max_value=500,
+                value=50,
+                step=10
+            )
+            
+            if st.button("🔄 Generate Report", type="primary"):
+                with st.spinner("Analyzing market data with LLM..."):
+                    try:
+                        report = st.session_state.auditor_agent.generate_market_report(
+                            num_recent_deals=num_deals,
+                            world=st.session_state.world
+                        )
+                        st.session_state['latest_audit_report'] = report
+                        st.success("Report generated!")
+                    except Exception as e:
+                        st.error(f"Error generating report: {e}")
+        
+        with col2:
+            if 'latest_audit_report' in st.session_state:
+                report = st.session_state['latest_audit_report']
+                
+                # Display formatted briefing
+                briefing = st.session_state.auditor_agent.format_daily_briefing(report)
+                st.code(briefing, language="text")
+                
+                # Download button
+                st.download_button(
+                    "📥 Download Report",
+                    briefing,
+                    file_name=f"market_report_{report.get('report_id', 'latest')}.txt",
+                    mime="text/plain"
+                )
+            else:
+                st.info("👆 Click 'Generate Report' to analyze market trends using AI")
+                
+                with st.expander("📖 What does the Auditor analyze?"):
+                    st.markdown("""
+                    The Market Auditor Agent uses LLM to provide insights on:
+                    
+                    - **Carrier Performance**: Which carriers dominate the market?
+                    - **Price Trends**: Are prices rising or falling? Why?
+                    - **Market Fairness**: Any agents exploiting the system?
+                    - **Market Health**: Overall assessment and recommendations
+                    - **Weather Impact**: How conditions affect logistics costs
+                    
+                    Analysis is based on real deal history from the database.
+                    """)
+    
+    with tab5:
+        # Live Inventory tab - NEW
+        st.subheader("📊 Live Inventory Monitoring")
+        
+        # Heartbeat controls
+        col1, col2, col3 = st.columns([1, 1, 2])
+        
+        with col2:
+            if st.button("⏭️ Simulate Tick"):
+                new_orders = st.session_state.market_heartbeat.tick()
+                if new_orders:
+                    st.success(f"Generated {len(new_orders)} new orders!")
+                st.rerun()
+        
+        with col3:
+            heartbeat_stats = st.session_state.market_heartbeat.get_statistics()
+            st.metric(
+                "Simulation Tick",
+                heartbeat_stats['current_tick'],
+                f"{heartbeat_stats['total_orders_generated']} orders"
+            )
+        
+        # Capture current inventory snapshot
+        city_states = heartbeat_stats.get('city_states', {})
+        
+        # Add to history
+        timestamp = datetime.now()
+        for city_name, city_data in city_states.items():
+            st.session_state.inventory_history.append({
+                'timestamp': timestamp,
+                'city': city_name,
+                'inventory': city_data['inventory'],
+                'capacity': city_data['capacity'],
+                'percentage': city_data['inventory_percentage'] * 100
+            })
+        
+        # Keep only recent history
+        if len(st.session_state.inventory_history) > 100:
+            st.session_state.inventory_history = st.session_state.inventory_history[-100:]
+        
+        # Display current inventory levels
+        st.subheader("Current Inventory Levels")
+        
+        inventory_cols = st.columns(len(city_states))
+        
+        for i, (city_name, city_data) in enumerate(city_states.items()):
+            with inventory_cols[i]:
+                inventory = city_data['inventory']
+                capacity = city_data['capacity']
+                percentage = city_data['inventory_percentage'] * 100
+                
+                if percentage > 70:
+                    icon = "🟢"
+                elif percentage > 30:
+                    icon = "🟡"
+                else:
+                    icon = "🔴"
+                
+                st.metric(
+                    f"{icon} {city_name}",
+                    f"{inventory}/{capacity}",
+                    f"{percentage:.1f}%"
+                )
+        
+        # Inventory trend chart
+        if st.session_state.inventory_history:
+            st.divider()
+            st.subheader("Inventory Trend Over Time")
+            
+            df_history = pd.DataFrame(st.session_state.inventory_history)
+            
+            fig_inventory = px.line(
+                df_history,
+                x='timestamp',
+                y='percentage',
+                color='city',
+                title='Inventory Levels Over Time (%)',
+                labels={'percentage': 'Inventory %', 'timestamp': 'Time'},
+                markers=True
+            )
+            
+            fig_inventory.add_hline(
+                y=30,
+                line_dash="dash",
+                line_color="red",
+                annotation_text="Low Inventory Threshold"
+            )
+            
+            fig_inventory.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color="white"),
+                hovermode='x unified'
+            )
+            
+            st.plotly_chart(fig_inventory, use_container_width=True)
+        
+        # Recent orders
+        recent_orders = st.session_state.market_heartbeat.generated_orders[-10:]
+        if recent_orders:
+            st.divider()
+            st.subheader("Recent Auto-Generated Orders")
+            
+            orders_data = []
+            for order in recent_orders:
+                orders_data.append({
+                    "Order ID": order.order_id,
+                    "Route": f"{order.origin} → {order.destination}",
+                    "Weight": f"{order.weight_kg:.0f} kg",
+                    "Priority": order.priority.value,
+                    "Budget": f"${order.max_budget:.2f}"
+                })
+            
+            st.dataframe(pd.DataFrame(orders_data), use_container_width=True, hide_index=True)
+    
     # Footer
     st.divider()
-    st.caption("MA-GET v1.0 | Multi-Agent Generative Economic Twin for Logistics")
+    st.caption("MA-GET v1.0 | Multi-Agent Generative Economic Twin for Logistics | Enhanced with Market Heartbeat & Auditor")
 
 
 if __name__ == "__main__":
