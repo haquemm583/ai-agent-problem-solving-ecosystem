@@ -1,9 +1,18 @@
 @echo off
-REM Quick start script for MA-GET 3D Simulation (Windows)
+REM LEGACY: Streamlit version startup script (Windows)
+REM For the new React + Three.js version, use: start-react.bat
 
+echo ================================
+echo LEGACY VERSION
 echo ================================
 echo MA-GET 3D Logistics Simulation
 echo ================================
+echo.
+echo NOTE: You are starting the legacy Streamlit version.
+echo For the new React + Three.js version with better graphics,
+echo use: start-react.bat
+echo.
+pause
 echo.
 
 REM Check if virtual environment exists

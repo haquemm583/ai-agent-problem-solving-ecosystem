@@ -1,8 +1,17 @@
 #!/bin/bash
-# Quick start script for MA-GET 3D Simulation
+# LEGACY: Streamlit version startup script
+# For the new React + Three.js version, use: ./start-react.sh
 
-echo "🌍 MA-GET 3D Logistics Simulation"
-echo "=================================="
+echo "⚠️  LEGACY VERSION"
+echo "================================"
+echo "MA-GET 3D Logistics Simulation"
+echo "================================"
+echo ""
+echo "NOTE: You are starting the legacy Streamlit version."
+echo "For the new React + Three.js version with better graphics,"
+echo "use: ./start-react.sh"
+echo ""
+read -p "Press Enter to continue with legacy version or Ctrl+C to cancel..."
 echo ""
 
 # Check if virtual environment exists

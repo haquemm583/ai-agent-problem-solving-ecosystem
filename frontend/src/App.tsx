@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text, Box } from '@react-three/drei';
 import * as THREE from 'three';
@@ -188,7 +188,7 @@ const Scene: React.FC<{ worldData: WorldData | null }> = ({ worldData }) => {
 
       return () => clearInterval(interval);
     }
-  }, [worldData]);
+  }, [worldData?.simulation.running]); // Only depend on running state
 
   if (!worldData) {
     return (
@@ -271,7 +271,7 @@ const App: React.FC = () => {
   const API_BASE = 'http://localhost:8000';
 
   // Fetch world state
-  const fetchWorldState = async () => {
+  const fetchWorldState = useCallback(async () => {
     try {
       const response = await axios.get<WorldData>(`${API_BASE}/api/world`);
       setWorldData(response.data);
@@ -279,30 +279,30 @@ const App: React.FC = () => {
     } catch (error) {
       console.error('Error fetching world state:', error);
     }
-  };
+  }, []);
 
   // Start simulation
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     try {
       await axios.post(`${API_BASE}/api/simulation/start`);
       setIsRunning(true);
     } catch (error) {
       console.error('Error starting simulation:', error);
     }
-  };
+  }, []);
 
   // Stop simulation
-  const handleStop = async () => {
+  const handleStop = useCallback(async () => {
     try {
       await axios.post(`${API_BASE}/api/simulation/stop`);
       setIsRunning(false);
     } catch (error) {
       console.error('Error stopping simulation:', error);
     }
-  };
+  }, []);
 
   // Simulation tick
-  const simulationTick = async () => {
+  const simulationTick = useCallback(async () => {
     if (isRunning) {
       try {
         await axios.post(`${API_BASE}/api/simulation/tick`);
@@ -311,7 +311,7 @@ const App: React.FC = () => {
         console.error('Error during simulation tick:', error);
       }
     }
-  };
+  }, [isRunning, fetchWorldState]);
 
   // Initial fetch
   useEffect(() => {
@@ -329,7 +329,7 @@ const App: React.FC = () => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, simulationTick, fetchWorldState]);
 
   return (
     <div className="App">
