@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# Node modules (if using any frontend tooling)
+node_modules/
+package-lock.json
+yarn.lock
+
 # Distribution / packaging
 .Python
 build/

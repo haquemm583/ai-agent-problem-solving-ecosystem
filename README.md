@@ -1,36 +1,44 @@
 # MA-GET: Multi-Agent Generative Economic Twin for Logistics
 
-A **Multi-Agent Generative Economic Twin** simulation for autonomous logistics negotiation and real-time supply chain adaptation.
+A **3D Visual Simulation** of autonomous logistics negotiation with real-time API data integration.
 
 ## 🎯 Overview
 
-MA-GET simulates a Texas-based logistics corridor where autonomous AI agents negotiate shipping contracts in real-time. The system models:
+MA-GET is a 3D visualization platform that simulates a Texas-based logistics corridor where autonomous AI agents negotiate shipping contracts in real-time. The system uses **real-world data** from weather APIs, fuel price sources, and traffic conditions to create a realistic simulation environment.
 
-- **Warehouse Agents**: Manage inventory and bid for shipping services (minimize costs)
-- **Carrier Agents**: Manage truck fleets and negotiate prices (maximize profit)
-- **Environmental Agent**: Introduces real-world chaos (weather, fuel prices, route closures)
+### Key Features
+
+- 🌍 **3D Interactive Visualization** using PyDeck rendering
+- 🔴 **Single Button Control** - Start/Stop simulation with one click
+- 🌦️ **Real Weather Data** from OpenWeatherMap API
+- ⛽ **Live Fuel Prices** for different Texas cities
+- 🚦 **Traffic Conditions** based on time-of-day and random incidents
+- 🤖 **AI Agents** negotiating logistics contracts autonomously
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        MA-GET SYSTEM                            │
+│                    MA-GET 3D SIMULATION                         │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────────┐  │
-│  │  Warehouse  │◄──►│   Carrier   │◄──►│   Environmental     │  │
-│  │    Agent    │    │    Agent    │    │   Chaos Generator   │  │
-│  └──────┬──────┘    └──────┬──────┘    └──────────┬──────────┘  │
-│         │                  │                      │             │
-│         └──────────────────┼──────────────────────┘             │
-│                            ▼                                    │
-│              ┌─────────────────────────┐                        │
-│              │      WORLD STATE        │                        │
-│              │   (NetworkX Graph)      │                        │
-│              │   - Cities (Nodes)      │                        │
-│              │   - Routes (Edges)      │                        │
-│              └─────────────────────────┘                        │
-│                                                                 │
+│  ┌──────────────────┐         ┌──────────────────┐            │
+│  │   Real-time APIs │         │  3D Visualization│            │
+│  │  ・Weather        │────────▶│   (PyDeck)       │            │
+│  │  ・Fuel Prices   │         │                  │            │
+│  │  ・Traffic Data  │         │  Single Button   │            │
+│  └──────────────────┘         │  START / STOP    │            │
+│           │                   └──────────────────┘            │
+│           ▼                                                    │
+│  ┌──────────────────┐                                         │
+│  │   WORLD STATE    │                                         │
+│  │  (NetworkX Graph)│◄──────┐                                │
+│  │  ・Cities        │        │                                │
+│  │  ・Routes        │   ┌────┴─────────┐                     │
+│  │  ・Conditions    │   │  AI Agents   │                     │
+│  └──────────────────┘   │ ・Warehouse  │                     │
+│                         │ ・Carrier    │                     │
+│                         └──────────────┘                     │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -74,54 +82,37 @@ ai-agent-problem-solving-ecosystem/
     └── REPUTATION_SYSTEM.md
 ```
 
-## 🎮 NEW: 3D Mission Control Dashboard
+## 🌐 Real Data Sources
 
-The MA-GET system now includes a **stunning 3D visualization dashboard** powered by PyDeck!
+The simulation integrates with the following real-world data sources:
 
-### Quick Launch
+### Weather API (OpenWeatherMap)
+- **Free Tier**: 1,000 calls/day
+- **Data**: Temperature, wind speed, weather conditions
+- **Updates**: Real-time weather affecting route conditions
+- **Signup**: https://openweathermap.org/api
 
-```bash
-# Install dependencies (includes pydeck)
-pip install -r requirements.txt
+### Fuel Prices
+- City-specific fuel prices based on Texas market data
+- Daily variations reflecting market conditions
+- Lower prices near refineries (Houston, Corpus Christi)
 
-# Start the dashboard
-streamlit run src/ui/dashboard.py
-```
+### Traffic Conditions
+- Time-of-day based congestion (rush hour: 6-9 AM, 4-7 PM)
+- Random incident generation (5% probability)
+- Route closures for severe incidents
 
-### Key Features
+## 🎨 3D Visualization Features
 
-🗺️ **3D Network Visualization**
-- **Inventory Columns**: 3D bars showing warehouse levels (height = inventory)
-- **Route Arcs**: Curved lines showing shipping routes (thickness = cost)
-- **Active Shipments**: Yellow dots marking high-demand areas
+The simulation uses **PyDeck** for high-performance 3D rendering:
 
-🎮 **Interactive Camera Controls**
-- Tilt: 0-85° (see column heights in 3D)
-- Rotate: 0-360° (orbit the network)
-- Zoom: 4.0-8.0 (wide to detailed view)
-- Reset button to return to default
-
-📡 **Live Feed Panel**
-- Natural language news tickers
-- Real-time event translation
-- Instead of: `{"event": "WEATHER", "type": "STORM"}`
-- You see: "🚨 BREAKING: Severe Storm in Houston! Shipping delays expected."
-
-### Color Coding
-
-| Element | Color | Meaning |
-|---------|-------|---------|
-| Inventory | 🟢 Green | <30% capacity |
-| Inventory | 🟡 Yellow | 30-70% capacity |
-| Inventory | 🔴 Red | >70% capacity |
-| Routes | Green→Red | Direction flow |
-| Shipments | 🟡 Yellow | Active zones |
-
-### Documentation
-
-- **[QUICKSTART_3D.md](QUICKSTART_3D.md)**: Installation & testing
-- **[3D_DASHBOARD_GUIDE.md](3D_DASHBOARD_GUIDE.md)**: Complete feature guide
-- **[3D_IMPLEMENTATION_SUMMARY.md](3D_IMPLEMENTATION_SUMMARY.md)**: Technical details
+- 🏢 **3D Inventory Columns**: Height represents warehouse stock levels
+- 🛣️ **Route Network**: Arcs showing connections between cities
+- 🌈 **Color Coding**:
+  - Green inventory: <30% capacity
+  - Yellow inventory: 30-70% capacity
+  - Red inventory: >70% capacity
+- 🔄 **Real-time Updates**: Visualization updates as simulation runs
 
 ## 🚀 Quick Start
 
@@ -131,20 +122,32 @@ streamlit run src/ui/dashboard.py
 pip install -r requirements.txt
 ```
 
-### 2. Run the Simulation
+### 2. Configure API Keys (Optional)
+
+Copy `.env.template` to `.env` and add your OpenWeatherMap API key for real weather data:
 
 ```bash
-python main.py
+cp .env.template .env
+# Edit .env and add your OPENWEATHER_API_KEY
 ```
 
-### 3. Watch the Negotiation
+Get a free API key at: https://openweathermap.org/api (1000 calls/day free tier)
 
-The terminal will display:
-- 🌍 World state with cities and routes
-- 📦 Order details
-- 🧠 Agent internal monologues (reasoning)
-- 🤝 Negotiation progress
-- ✅ Final deal summary
+**Note**: The simulation works without an API key using realistic mock data.
+
+### 3. Run the 3D Simulation
+
+```bash
+streamlit run app.py
+```
+
+This will launch the 3D visualization in your browser with a single START/STOP button.
+
+### 4. Control the Simulation
+
+- Click **▶ START** to begin the simulation
+- Click **⏸ STOP** to pause the simulation
+- Watch the 3D visualization update in real-time with live data
 
 ## 🗺️ Texas Logistics Corridor
 
@@ -177,118 +180,97 @@ The simulation models 5 major Texas cities connected by highways:
                     210mi
 ```
 
-## 🤖 Agent Behavior
+## 🤖 How It Works
 
-### Warehouse Agent Strategy
-- Starts with conservative offers (30% of fair price range)
-- Increases bids based on urgency and remaining rounds
-- Maximum bid capped at order budget
+### 1. Real Data Collection
+The simulation pulls live data from APIs:
+- Weather conditions for each Texas city
+- Fuel prices with city-specific variations
+- Traffic conditions based on time and random incidents
 
-### Carrier Agent Strategy
-- Calculates minimum acceptable price (fuel costs + 20% margin)
-- Targets profit per mile ($2.50/mile default)
-- Becomes more flexible in later negotiation rounds
+### 2. World State Updates
+Data is applied to the NetworkX graph:
+- Route conditions updated based on weather
+- Fuel costs adjusted by traffic congestion
+- Routes may close due to severe incidents
 
-## 📊 Negotiation Protocol
+### 3. Agent Negotiations
+AI agents autonomously:
+- Generate shipping orders based on inventory levels
+- Compete for contracts through marketplace bidding
+- Make decisions based on real-time conditions
 
-Agents exchange **Pydantic-validated JSON messages**:
+### 4. 3D Visualization
+PyDeck renders the network in real-time:
+- Inventory levels shown as 3D columns
+- Routes displayed as arcs with varying conditions
+- Updates every simulation tick (2 seconds)
 
-```python
-{
-    "offer_id": "OFF-abc123",
-    "offer_price": 525.00,
-    "reasoning": "Starting with conservative offer...",
-    "eta_estimate": 3.8,
-    "status": "PENDING",
-    "confidence": 0.75
-}
-```
+## 💡 Usage Tips
 
-## 🔧 Configuration
-
-### Adjust Agent Parameters
-
-In `main.py`:
-
-```python
-warehouse = WarehouseAgent(
-    agent_id="WH-CC-001",
-    location="Corpus Christi",
-    budget=10000.0,          # Total budget
-    urgency_threshold=0.7    # When to prioritize speed
-)
-
-carrier = CarrierAgent(
-    agent_id="CR-TX-001",
-    location="Houston",
-    fleet_size=5,            # Number of trucks
-    profit_target=2.5        # Target $/mile profit
-)
-```
-
-### Modify World Conditions
-
-In `world.py`:
-
-```python
-# Update weather
-world.update_weather("Houston", "Austin", WeatherStatus.STORM)
-
-# Change fuel prices
-world.update_fuel_multiplier("Corpus Christi", "Houston", 1.5)
-
-# Close a route
-world.close_route("Dallas", "Houston")
-```
+- **Start Simple**: Click START and watch the simulation run
+- **API Key Optional**: Works without OpenWeather API key (uses mock data)
+- **Performance**: Smooth on modern browsers with WebGL support
+- **Data Accuracy**: With API key, weather updates every few seconds
+- **Simulation Speed**: Adjustable in code (default: 2 second ticks)
 
 ## 📈 Current Features
 
-### Core System
-- ✅ Pydantic schema for structured agent communication
-- ✅ NetworkX graph for Texas logistics network
-- ✅ LangGraph workflow for negotiation
-- ✅ Rich terminal output with agent monologues
-- ✅ Fair price calculation based on distance/weight
-- ✅ Environmental chaos generator (weather/fuel)
+### 3D Visualization
+- ✅ **PyDeck 3D rendering** with interactive visualization
+- ✅ **Real-time updates** reflecting live API data
+- ✅ **Inventory visualization** with 3D columns
+- ✅ **Route network** showing connections and conditions
+- ✅ **Single button interface** for simple control
 
-### 3D Dashboard (NEW!)
-- ✅ **PyDeck 3D visualization** with three interactive layers
-- ✅ **Camera controls** for tilt, rotate, and zoom
-- ✅ **Live Feed panel** with natural language event translation
-- ✅ **Real-time updates** reflecting world state changes
-- ✅ **Color-coded inventory** visualization (green/yellow/red)
-- ✅ **Route cost visualization** (arc thickness = fuel cost)
+### Real Data Integration
+- ✅ **OpenWeatherMap API** for live weather conditions
+- ✅ **Fuel price data** with city-specific variations
+- ✅ **Traffic conditions** based on time-of-day and random incidents
+- ✅ **Automatic fallback** to mock data if APIs unavailable
 
-### Multi-Agent Marketplace
-- ✅ Multiple carriers competing for contracts
-- ✅ Competitive bidding system
-- ✅ Reputation tracking
-- ✅ Auction-based contract awards
+### AI Agent System
+- ✅ Autonomous warehouse and carrier agents
+- ✅ Multi-carrier marketplace with competitive bidding
+- ✅ Reputation tracking system
+- ✅ Real-time negotiation and contract awards
 
-## 🔜 Future Enhancements
+## 📁 Project Structure
 
-### Visualization
-- Animated shipments moving along routes
-- Time-lapse replay of historical data
-- Heat maps for demand/supply
-- VR/AR export capabilities
+```
+ai-agent-problem-solving-ecosystem/
+├── app.py                       # Main 3D simulation app (START HERE)
+├── main.py                      # Legacy CLI interface
+├── requirements.txt             # Python dependencies
+├── README.md                    # This file
+├── src/
+│   ├── core/
+│   │   ├── api_integrations.py # Real API data fetching
+│   │   ├── world.py            # NetworkX world state
+│   │   ├── marketplace.py      # Multi-carrier auctions
+│   │   └── schema.py           # Data models
+│   ├── agents/
+│   │   └── agents.py           # AI agent behaviors
+│   ├── ui/
+│   │   ├── dashboard.py        # Legacy dashboard
+│   │   └── viz_components.py   # 3D rendering components
+│   └── utils/
+│       └── event_log.py        # Event logging
+├── tests/                       # Test files
+└── docs/                        # Documentation
+```
 
-### AI & Intelligence
-- Connect to Ollama (Llama 3.2-3B / Phi-3.5)
-- Or OpenAI GPT-4o-mini
-- Natural language negotiation strategies
-- Predictive analytics for demand forecasting
+## 🎓 Learn More
 
-### Data & Analytics
-- SQLite database for history
-- Performance metrics dashboard
-- A/B testing strategies
-- Machine learning optimization
+For detailed technical documentation, see:
+- **docs/3D_IMPLEMENTATION_SUMMARY.md** - Technical architecture
+- **docs/QUICKSTART_3D.md** - Quick start guide
+- **docs/MARKETPLACE_UPDATE.md** - Multi-agent marketplace details
 
 ## 📝 License
 
 MIT License - See LICENSE file for details.
 
-## 🤝 Contributing
+---
 
-This is a solo-developer project focused on learning and experimentation.
+**Built with**: Python, Streamlit, PyDeck, NetworkX, OpenWeatherMap API
