@@ -6,6 +6,7 @@ Fetches real-world data for weather, fuel prices, and traffic conditions.
 import os
 import requests
 import logging
+import random
 from typing import Dict, Optional, List
 from datetime import datetime
 from dotenv import load_dotenv
@@ -23,7 +24,7 @@ class WeatherAPI:
     """
     
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("OPENWEATHER_API_KEY", "")
+        self.api_key = api_key or os.getenv("OPENWEATHER_API_KEY")
         self.base_url = "https://api.openweathermap.org/data/2.5/weather"
         
     def get_weather(self, lat: float, lon: float) -> Dict:
@@ -82,7 +83,6 @@ class WeatherAPI:
     
     def _get_mock_weather(self) -> Dict:
         """Fallback mock weather data"""
-        import random
         statuses = [WeatherStatus.CLEAR, WeatherStatus.RAIN, WeatherStatus.FOG, WeatherStatus.STORM]
         return {
             "status": random.choice(statuses),
@@ -115,7 +115,6 @@ class FuelPriceAPI:
         """
         # In production, this would call a real API
         # For now, we'll use realistic variation
-        import random
         
         # Cities have different fuel prices
         city_modifiers = {
@@ -150,9 +149,6 @@ class TrafficAPI:
         Returns:
             Dict with route condition data
         """
-        import random
-        from datetime import datetime
-        
         hour = datetime.now().hour
         
         # Rush hour affects congestion (6-9 AM, 4-7 PM)
