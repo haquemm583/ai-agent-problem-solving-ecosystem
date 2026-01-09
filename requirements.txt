@@ -3,6 +3,11 @@
 
 # Core
 python-dotenv>=1.0.0
+requests>=2.31.0
+
+# FastAPI Backend (for React frontend)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
 
 # Data Validation
 pydantic>=2.5.0

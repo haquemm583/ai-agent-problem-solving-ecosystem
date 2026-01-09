@@ -1,0 +1,142 @@
+.App {
+  width: 100vw;
+  height: 100vh;
+  background: linear-gradient(135deg, #0a0e1a 0%, #1a1a2e 100%);
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header */
+.header {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.header h1 {
+  margin: 0;
+  color: #00e5ff;
+  font-size: 32px;
+  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+}
+
+.status {
+  font-size: 18px;
+  font-weight: bold;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+}
+
+/* Control Panel */
+.controls {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+.start-btn,
+.stop-btn {
+  font-size: 24px;
+  font-weight: bold;
+  padding: 20px 60px;
+  border-radius: 50px;
+  border: 2px solid;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.start-btn {
+  background-color: #44ff44;
+  color: #0a0e1a;
+  border-color: #66ff66;
+}
+
+.start-btn:hover {
+  background-color: #00cc00;
+  transform: scale(1.05);
+}
+
+.stop-btn {
+  background-color: #ff4444;
+  color: white;
+  border-color: #ff6666;
+}
+
+.stop-btn:hover {
+  background-color: #cc0000;
+  transform: scale(1.05);
+}
+
+/* Stats Panel */
+.stats {
+  position: absolute;
+  top: 100px;
+  right: 20px;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  min-width: 200px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0;
+  font-family: 'Courier New', monospace;
+}
+
+.stat-label {
+  color: #888;
+  font-size: 14px;
+}
+
+.stat-value {
+  color: #00e5ff;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* 3D Canvas Container */
+.canvas-container {
+  width: 100%;
+  height: 100%;
+}
+
+/* Legend (optional) */
+.legend {
+  position: absolute;
+  bottom: 40px;
+  left: 20px;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: white;
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin: 5px 0;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  border-radius: 3px;
+}

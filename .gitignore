@@ -6,6 +6,18 @@ __pycache__/
 # C extensions
 *.so
 
+# Node modules (if using any frontend tooling)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Frontend build
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
 # Distribution / packaging
 .Python
 build/
@@ -50,6 +62,11 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+
+# Database files (created at runtime)
+*.db
+deal_history.db
+src/core/deal_history.db
 
 # Translations
 *.mo
