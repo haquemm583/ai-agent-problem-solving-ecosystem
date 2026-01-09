@@ -1,46 +1,92 @@
 # MA-GET: Multi-Agent Generative Economic Twin for Logistics
 
-A **3D Visual Simulation** of autonomous logistics negotiation with real-time API data integration.
+A **3D Visual Simulation** of autonomous logistics negotiation with real-time API data integration, built with **React** and **Three.js**.
 
 ## 🎯 Overview
 
-MA-GET is a 3D visualization platform that simulates a Texas-based logistics corridor where autonomous AI agents negotiate shipping contracts in real-time. The system uses **real-world data** from weather APIs, fuel price sources, and traffic conditions to create a realistic simulation environment.
+MA-GET is a modern 3D visualization platform that simulates a Texas-based logistics corridor where autonomous AI agents negotiate shipping contracts in real-time. The system uses **real-world data** from weather APIs, fuel price sources, and traffic conditions to create a realistic simulation environment.
 
 ### Key Features
 
-- 🌍 **3D Interactive Visualization** using PyDeck rendering
+- 🌍 **Beautiful 3D Visualization** using React Three Fiber and Three.js
+- 🏢 **Realistic 3D Models** - buildings, trucks, and roads
 - 🔴 **Single Button Control** - Start/Stop simulation with one click
 - 🌦️ **Real Weather Data** from OpenWeatherMap API
 - ⛽ **Live Fuel Prices** for different Texas cities
 - 🚦 **Traffic Conditions** based on time-of-day and random incidents
 - 🤖 **AI Agents** negotiating logistics contracts autonomously
+- ⚡ **Modern Stack** - React, TypeScript, FastAPI, Three.js
 
 ## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    MA-GET 3D SIMULATION                         │
+│                  MA-GET 3D SIMULATION                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  ┌──────────────────┐         ┌──────────────────┐            │
-│  │   Real-time APIs │         │  3D Visualization│            │
-│  │  ・Weather        │────────▶│   (PyDeck)       │            │
-│  │  ・Fuel Prices   │         │                  │            │
-│  │  ・Traffic Data  │         │  Single Button   │            │
-│  └──────────────────┘         │  START / STOP    │            │
-│           │                   └──────────────────┘            │
-│           ▼                                                    │
-│  ┌──────────────────┐                                         │
-│  │   WORLD STATE    │                                         │
-│  │  (NetworkX Graph)│◄──────┐                                │
-│  │  ・Cities        │        │                                │
-│  │  ・Routes        │   ┌────┴─────────┐                     │
-│  │  ・Conditions    │   │  AI Agents   │                     │
-│  └──────────────────┘   │ ・Warehouse  │                     │
-│                         │ ・Carrier    │                     │
-│                         └──────────────┘                     │
+│  ┌──────────────────────────────────────────────────┐          │
+│  │   React Frontend (TypeScript + Three.js)         │          │
+│  │  ・Single START/STOP Button                      │          │
+│  │  ・3D Scene with Buildings, Trucks, Roads        │          │
+│  │  ・Real-time Stats Display                       │          │
+│  │  ・Smooth Camera Controls                        │          │
+│  └────────────────┬─────────────────────────────────┘          │
+│                   │ HTTP/REST API                               │
+│                   ▼                                             │
+│  ┌──────────────────────────────────────────────────┐          │
+│  │   FastAPI Backend (Python)                       │          │
+│  │  ・RESTful API Endpoints                         │          │
+│  │  ・CORS Enabled                                  │          │
+│  │  ・Real-time Data Serving                        │          │
+│  └────────────────┬─────────────────────────────────┘          │
+│                   │                                             │
+│                   ▼                                             │
+│  ┌──────────────────────────────────────────────────┐          │
+│  │   Real-time APIs & Data Integration              │          │
+│  │  ・OpenWeatherMap (Weather)                      │          │
+│  │  ・Fuel Price Data                               │          │
+│  │  ・Traffic Simulation                            │          │
+│  └────────────────┬─────────────────────────────────┘          │
+│                   │                                             │
+│                   ▼                                             │
+│  ┌──────────────────────────────────────────────────┐          │
+│  │   WorldState (NetworkX Graph)                    │          │
+│  │  ・5 Texas Cities (nodes)                        │          │
+│  │  ・7 Routes (edges)                              │          │
+│  │  ・Real-time Conditions                          │          │
+│  └────────────────┬─────────────────────────────────┘          │
+│                   │                                             │
+│                   ▼                                             │
+│  ┌──────────────────────────────────────────────────┐          │
+│  │   AI Agents (Autonomous)                         │          │
+│  │  ・Warehouse Agents                              │          │
+│  │  ・Carrier Agents                                │          │
+│  │  ・Market Heartbeat                              │          │
+│  └──────────────────────────────────────────────────┘          │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+## 🎨 Technology Stack
+
+### Frontend
+- **React 18** - Modern UI framework
+- **TypeScript** - Type-safe development
+- **Three.js** - WebGL 3D rendering
+- **React Three Fiber** - React renderer for Three.js
+- **@react-three/drei** - Useful helpers for R3F
+- **Axios** - HTTP client for API calls
+
+### Backend
+- **FastAPI** - Modern Python web framework
+- **Uvicorn** - ASGI server
+- **Pydantic** - Data validation
+- **NetworkX** - Graph-based world state
+- **Requests** - API integration
+
+### Data Sources
+- **OpenWeatherMap API** - Real weather data
+- **Custom** - Fuel prices and traffic simulation
 
 ## 📁 Project Structure
 
@@ -104,15 +150,33 @@ The simulation integrates with the following real-world data sources:
 
 ## 🎨 3D Visualization Features
 
-The simulation uses **PyDeck** for high-performance 3D rendering:
+The simulation uses **React Three Fiber** and **Three.js** for stunning 3D graphics:
 
-- 🏢 **3D Inventory Columns**: Height represents warehouse stock levels
-- 🛣️ **Route Network**: Arcs showing connections between cities
-- 🌈 **Color Coding**:
-  - Green inventory: <30% capacity
-  - Yellow inventory: 30-70% capacity
-  - Red inventory: >70% capacity
-- 🔄 **Real-time Updates**: Visualization updates as simulation runs
+- 🏢 **3D Buildings**: Warehouses represented as realistic 3D structures
+  - Height varies based on inventory levels
+  - Color indicates capacity: Green (<30%), Yellow (30-70%), Red (>70%)
+  - Subtle breathing animation for visual interest
+  
+- 🚚 **Animated Trucks**: Realistic delivery vehicles
+  - Move along routes between warehouses
+  - Appear/disappear based on active shipments
+  - Smooth interpolation for natural movement
+
+- 🛣️ **Route Network**: Visual connections between cities
+  - Green lines for open routes
+  - Red lines for closed/blocked routes
+  - Width indicates traffic volume
+
+- 🎮 **Interactive Controls**:
+  - **Orbit**: Click and drag to rotate view
+  - **Zoom**: Scroll to zoom in/out
+  - **Pan**: Right-click and drag to pan
+  - **Auto-rotate**: Optional automatic camera rotation
+
+- 💡 **Dynamic Lighting**:
+  - Ambient lighting for overall visibility
+  - Directional light for shadows
+  - Point lights for highlights
 
 ## 🚀 Quick Start
 
@@ -120,28 +184,50 @@ The simulation uses **PyDeck** for high-performance 3D rendering:
 
 **Linux/Mac:**
 ```bash
-./start.sh
+./start-react.sh
 ```
 
 **Windows:**
 ```bash
-start.bat
+start-react.bat
 ```
 
 These scripts will automatically:
-- Create a virtual environment
-- Install all dependencies
-- Launch the 3D simulation
+- Create a Python virtual environment
+- Install all backend dependencies
+- Install all frontend (Node.js) dependencies
+- Launch the FastAPI backend server
+- Launch the React development server
+- Open the simulation in your browser
 
 ### Method 2: Manual Setup
 
-#### 1. Install Dependencies
+#### Prerequisites
+- Python 3.8+
+- Node.js 16+ and npm
+
+#### 1. Backend Setup
 
 ```bash
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install Python dependencies
 pip install -r requirements.txt
 ```
 
-#### 2. Configure API Keys (Optional)
+#### 2. Frontend Setup
+
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install Node dependencies
+npm install
+```
+
+#### 3. Configure API Keys (Optional)
 
 Copy `.env.template` to `.env` and add your OpenWeatherMap API key for real weather data:
 
@@ -154,19 +240,27 @@ Get a free API key at: https://openweathermap.org/api (1000 calls/day free tier)
 
 **Note**: The simulation works without an API key using realistic mock data.
 
-#### 3. Run the 3D Simulation
+#### 4. Run the Simulation
 
+**Terminal 1 - Backend:**
 ```bash
-streamlit run app.py
+python backend.py
 ```
 
-This will launch the 3D visualization in your browser with a single START/STOP button.
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm start
+```
 
-### 4. Control the Simulation
+The simulation will open at `http://localhost:3000`
+
+### 5. Control the Simulation
 
 - Click **▶ START** to begin the simulation
 - Click **⏸ STOP** to pause the simulation
-- Watch the 3D visualization update in real-time with live data
+- Use mouse to orbit, zoom, and pan the 3D view
+- Watch trucks move between warehouses in real-time!
 
 ## 🗺️ Texas Logistics Corridor
 
@@ -258,21 +352,29 @@ PyDeck renders the network in real-time:
 
 ```
 ai-agent-problem-solving-ecosystem/
-├── app.py                       # Main 3D simulation app (START HERE)
-├── main.py                      # Legacy CLI interface
+├── backend.py                   # FastAPI server for React frontend
+├── app.py                       # Legacy Streamlit app (deprecated)
+├── main.py                      # CLI interface (optional)
+├── start-react.sh               # Quick start for Linux/Mac
+├── start-react.bat              # Quick start for Windows
 ├── requirements.txt             # Python dependencies
 ├── README.md                    # This file
+├── frontend/                    # React + Three.js application
+│   ├── public/
+│   ├── src/
+│   │   ├── App.tsx             # Main React component
+│   │   ├── App.css             # Styles
+│   │   └── index.tsx           # Entry point
+│   ├── package.json            # Node.js dependencies
+│   └── tsconfig.json           # TypeScript configuration
 ├── src/
 │   ├── core/
 │   │   ├── api_integrations.py # Real API data fetching
 │   │   ├── world.py            # NetworkX world state
 │   │   ├── marketplace.py      # Multi-carrier auctions
-│   │   └── schema.py           # Data models
+│   │   └── schema.py           # Pydantic models
 │   ├── agents/
 │   │   └── agents.py           # AI agent behaviors
-│   ├── ui/
-│   │   ├── dashboard.py        # Legacy dashboard
-│   │   └── viz_components.py   # 3D rendering components
 │   └── utils/
 │       └── event_log.py        # Event logging
 ├── tests/                       # Test files
@@ -281,10 +383,19 @@ ai-agent-problem-solving-ecosystem/
 
 ## 🎓 Learn More
 
-For detailed technical documentation, see:
+### API Documentation
+- Backend API docs available at: `http://localhost:8000/docs` (when running)
+- Interactive API testing with Swagger UI
+
+### For detailed technical documentation, see:
+- **docs/3D_SIMULATION_RESTRUCTURE.md** - Implementation details
 - **docs/3D_IMPLEMENTATION_SUMMARY.md** - Technical architecture
-- **docs/QUICKSTART_3D.md** - Quick start guide
 - **docs/MARKETPLACE_UPDATE.md** - Multi-agent marketplace details
+
+### Technology Documentation
+- [React Three Fiber](https://docs.pmnd.rs/react-three-fiber) - React renderer for Three.js
+- [Three.js](https://threejs.org/docs/) - 3D graphics library
+- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
 
 ## 📝 License
 
@@ -292,4 +403,5 @@ MIT License - See LICENSE file for details.
 
 ---
 
-**Built with**: Python, Streamlit, PyDeck, NetworkX, OpenWeatherMap API
+**Built with**: React, TypeScript, Three.js, FastAPI, Python, OpenWeatherMap API  
+**Author**: Solo developer project for learning and experimentation

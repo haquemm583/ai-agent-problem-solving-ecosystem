@@ -11,6 +11,13 @@ node_modules/
 package-lock.json
 yarn.lock
 
+# Frontend build
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
 # Distribution / packaging
 .Python
 build/
