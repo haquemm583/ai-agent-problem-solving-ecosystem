@@ -56,6 +56,11 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# Database files (created at runtime)
+*.db
+deal_history.db
+src/core/deal_history.db
+
 # Translations
 *.mo
 *.pot

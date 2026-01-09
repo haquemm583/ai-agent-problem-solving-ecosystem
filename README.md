@@ -116,13 +116,32 @@ The simulation uses **PyDeck** for high-performance 3D rendering:
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### Method 1: Quick Start Scripts (Recommended)
+
+**Linux/Mac:**
+```bash
+./start.sh
+```
+
+**Windows:**
+```bash
+start.bat
+```
+
+These scripts will automatically:
+- Create a virtual environment
+- Install all dependencies
+- Launch the 3D simulation
+
+### Method 2: Manual Setup
+
+#### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure API Keys (Optional)
+#### 2. Configure API Keys (Optional)
 
 Copy `.env.template` to `.env` and add your OpenWeatherMap API key for real weather data:
 
@@ -135,7 +154,7 @@ Get a free API key at: https://openweathermap.org/api (1000 calls/day free tier)
 
 **Note**: The simulation works without an API key using realistic mock data.
 
-### 3. Run the 3D Simulation
+#### 3. Run the 3D Simulation
 
 ```bash
 streamlit run app.py
