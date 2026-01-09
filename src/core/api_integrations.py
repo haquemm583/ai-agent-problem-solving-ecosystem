@@ -9,6 +9,7 @@ import logging
 from typing import Dict, Optional, List
 from datetime import datetime
 from dotenv import load_dotenv
+from src.core.schema import WeatherStatus
 
 load_dotenv()
 
@@ -56,19 +57,19 @@ class WeatherAPI:
             # Map OpenWeather conditions to our WeatherStatus
             weather_main = data.get("weather", [{}])[0].get("main", "Clear")
             weather_map = {
-                "Clear": "CLEAR",
-                "Clouds": "CLEAR",
-                "Rain": "RAIN",
-                "Drizzle": "RAIN",
-                "Thunderstorm": "STORM",
-                "Snow": "SEVERE",
-                "Mist": "FOG",
-                "Fog": "FOG",
-                "Haze": "FOG"
+                "Clear": WeatherStatus.CLEAR,
+                "Clouds": WeatherStatus.CLEAR,
+                "Rain": WeatherStatus.RAIN,
+                "Drizzle": WeatherStatus.RAIN,
+                "Thunderstorm": WeatherStatus.STORM,
+                "Snow": WeatherStatus.SEVERE,
+                "Mist": WeatherStatus.FOG,
+                "Fog": WeatherStatus.FOG,
+                "Haze": WeatherStatus.FOG
             }
             
             return {
-                "status": weather_map.get(weather_main, "CLEAR"),
+                "status": weather_map.get(weather_main, WeatherStatus.CLEAR),
                 "temp": data.get("main", {}).get("temp", 70),
                 "wind_speed": data.get("wind", {}).get("speed", 5),
                 "description": data.get("weather", [{}])[0].get("description", "clear"),
@@ -82,7 +83,7 @@ class WeatherAPI:
     def _get_mock_weather(self) -> Dict:
         """Fallback mock weather data"""
         import random
-        statuses = ["CLEAR", "RAIN", "FOG", "STORM"]
+        statuses = [WeatherStatus.CLEAR, WeatherStatus.RAIN, WeatherStatus.FOG, WeatherStatus.STORM]
         return {
             "status": random.choice(statuses),
             "temp": random.uniform(60, 95),
